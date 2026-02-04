@@ -2,6 +2,7 @@ const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../../utils/generateToken");
 const Slider = require("../../models/adminModel/Slider");
+const ServiceCategory = require("../../models/adminModel/ServiceCategory");
 
 // ================== REGISTER ==================
 exports.registerCustomer = async (req, res) => {
@@ -138,6 +139,46 @@ exports.getActiveSliders = async (req, res) => {
     });
   } catch (error) {
     console.error("GET ACTIVE SLIDERS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * =========================
+ * GET CATEGORY LIST USER SIDE
+ * =========================
+ */
+
+exports.getCategories = async (req, res) => {
+  try {
+    const { search = "", page = 1, limit = 10 } = req.query;
+
+    const query = {
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { slug: { $regex: search, $options: "i" } },
+      ],
+    };
+
+    const categories = await ServiceCategory.find(query)
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit));
+
+    const total = await ServiceCategory.countDocuments(query);
+
+    return res.json({
+      success: true,
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      data: categories,
+    });
+  } catch (error) {
+    console.error("GET CATEGORIES ERROR:", error);
     return res.status(500).json({
       success: false,
       message: error.message,

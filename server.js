@@ -37,7 +37,7 @@ app.use("/api/admin", adminRouter); // admin login
 app.use("/api/customer", customerRouter); // customer register and login
 app.use("/api/vendor", vendorRouter); //vendor register and login
 app.use("/api/googleAuth", googleAuthRoutes); // google login auth
-app.use("/apu/otpAuth", otpRoutes);
+app.use("/api/otpAuth", otpRoutes);
 
 // for Admins router
 app.use("/api/admin/approval", vendorApprovalRoutes);

@@ -6,6 +6,28 @@ const userSchema = new mongoose.Schema(
     firstName: String,
     lastName: String,
 
+    // ================= LOCATION (ADD THIS) =================
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: null,
+      },
+    },
+
+    locationEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    lastLocationUpdatedAt: {
+      type: Date,
+    },
+
     username: {
       type: String,
       unique: true,
