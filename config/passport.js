@@ -11,41 +11,29 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        console.log("Google profile:", profile); // 👈 helps debugging
-
-        const email =
-          profile.emails && profile.emails.length > 0
-            ? profile.emails[0].value
-            : null;
-
-        if (!email) {
-          return done(new Error("No email returned from Google"), null);
-        }
+        const email = profile.emails[0].value;
 
         let user = await User.findOne({
-          $or: [{ googleId: profile.id }, { email }],
+          $or: [
+            { googleId: profile.id },
+            { email },
+          ],
         });
 
         if (!user) {
           user = await User.create({
-            firstName: profile.name?.givenName || "",
-            lastName: profile.name?.familyName || "",
+            firstName: profile.name.givenName,
+            lastName: profile.name.familyName,
             email,
             googleId: profile.id,
             authProvider: "google",
             role: "customer",
           });
-        } else if (!user.googleId) {
-          // Link existing account with Google
-          user.googleId = profile.id;
-          user.authProvider = "google";
-          await user.save();
         }
 
-        return done(null, user);
+        done(null, user);
       } catch (error) {
-        console.error("Google Strategy Error:", error);
-        return done(error, null);
+        done(error, null);
       }
     }
   )
