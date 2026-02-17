@@ -6,8 +6,8 @@ const connectDB = require("./config/dbConnection");
 require("dotenv").config();
 
 const adminRouter = require("./routes/adminRoutes/index");
-const vendorRouter = require("./routes/vendorRoutes/serviceRoutes");
-const customerRouter = require("./routes/customerRoutes/customerRouter");
+const vendorRouter = require("./routes/vendorRoutes/index");
+const customerRouter = require("./routes/customerRoutes/index");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
 const otpRoutes = require("./routes/otpAuth.routes/otpAuth.routes");
 

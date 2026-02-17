@@ -21,4 +21,11 @@ router.get(
   isAdmin,
   sliderController.getSpecialOffers,
 );
+// ✅ new toggle status route
+router.patch(
+  "/toggle-status/:id",
+  protect,
+  isAdmin,
+  sliderController.toggleSliderStatus,
+);
 module.exports = router;

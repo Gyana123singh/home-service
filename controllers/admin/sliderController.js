@@ -107,3 +107,37 @@ exports.getSpecialOffers = async (req, res) => {
     });
   }
 };
+
+/**
+ * =========================
+ * TOGGLE SLIDER STATUS
+ * =========================
+ */
+exports.toggleSliderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const slider = await Slider.findById(id);
+    if (!slider) {
+      return res.status(404).json({
+        success: false,
+        message: "Slider not found",
+      });
+    }
+
+    slider.status = !slider.status; // ✅ toggle
+    await slider.save(); // ✅ SAVE to DB
+
+    return res.json({
+      success: true,
+      message: `Slider ${slider.status ? "activated" : "deactivated"} successfully`,
+      data: slider,
+    });
+  } catch (error) {
+    console.error("TOGGLE SLIDER STATUS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

@@ -1,33 +1,30 @@
-const Booking = require("../models/Booking");
-const Service = require("../models/Service");
-const ServiceOption = require("../models/ServiceOption");
+const Booking = require("../../models/CustomerBooking");
+const Service = require("../../models/AdminService");
 
-const Booking = require("../../models/Booking");
-const Service = require("../../models/Service");
-const ServiceOption = require("../../models/ServiceOption");
 
 exports.createBooking = async (req, res) => {
-  const { serviceId, date, time, selections } = req.body;
-  // selections = [ { optionId }, { optionId }, ... ]
+  const {
+    serviceId,
+    date,
+    time,
+    bedroomsOptionId,
+    cleaningTypeOptionId,
+    frequencyOptionId,
+  } = req.body;
 
   const service = await Service.findById(serviceId);
-  let basePrice = service.discountedPrice || service.basePrice;
 
-  let totalPrice = basePrice;
-  const finalSelections = [];
+  const bedroomOpt = await ServiceOption.findById(bedroomsOptionId);
+  const cleaningOpt = await ServiceOption.findById(cleaningTypeOptionId);
+  const frequencyOpt = await ServiceOption.findById(frequencyOptionId);
 
-  for (const sel of selections) {
-    const opt = await ServiceOption.findById(sel.optionId);
-    if (opt) {
-      totalPrice += opt.extraPrice;
-      finalSelections.push({
-        optionId: opt._id,
-        type: opt.type,
-        label: opt.label,
-        extraPrice: opt.extraPrice,
-      });
-    }
-  }
+  const basePrice = service.discountPrice || service.price;
+
+  const totalPrice =
+    basePrice +
+    (bedroomOpt?.extraPrice || 0) +
+    (cleaningOpt?.extraPrice || 0) +
+    (frequencyOpt?.extraPrice || 0);
 
   const booking = await Booking.create({
     customer: req.user._id,
@@ -35,7 +32,19 @@ exports.createBooking = async (req, res) => {
     service: service._id,
     date,
     time,
-    selections: finalSelections,
+
+    selections: {
+      bedrooms: bedroomOpt
+        ? { optionId: bedroomOpt._id, label: bedroomOpt.label, extraPrice: bedroomOpt.extraPrice }
+        : null,
+      cleaningType: cleaningOpt
+        ? { optionId: cleaningOpt._id, label: cleaningOpt.label, extraPrice: cleaningOpt.extraPrice }
+        : null,
+      frequency: frequencyOpt
+        ? { optionId: frequencyOpt._id, label: frequencyOpt.label, extraPrice: frequencyOpt.extraPrice }
+        : null,
+    },
+
     basePrice,
     totalPrice,
   });
