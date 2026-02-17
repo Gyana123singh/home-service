@@ -1,8 +1,20 @@
 const router = require("express").Router();
-const adminAuth = require("../../controllers/admin/adminController");
+const adminController = require("../../controllers/admin/adminController");
 const { protect } = require("../../middleware/auth.middleware");
 const { isAdmin } = require("../../middleware/role.middleware");
 
-router.post("/login", adminAuth.adminLogin);
+router.post("/", adminController.adminLogin);
+router.get(
+  "/vendors/pending",
+  protect,
+  isAdmin,
+  adminController.getPendingVendors,
+);
+router.post(
+  "/vendors/:id/approve",
+  protect,
+  isAdmin,
+  adminController.approveVendor,
+);
 
 module.exports = router;

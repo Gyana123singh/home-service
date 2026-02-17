@@ -6,7 +6,8 @@ const generateToken = require("../../utils/generateToken");
 router.get(
   "/google",
   passport.authenticate("google", {
-    scope: ["profile", "email"],
+    scope: ["openid", "profile", "email"],
+    prompt: "select_account", // 👈 force account chooser
   }),
 );
 
@@ -20,8 +21,9 @@ router.get(
   (req, res) => {
     const token = generateToken(req.user);
 
-    // redirect to frontend with token
-    res.redirect(`${process.env.FRONTEND_URL}/google-success?token=${token}`);
+    const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+    res.redirect(`${FRONTEND_URL}/google-success?token=${token}`);
   },
 );
 

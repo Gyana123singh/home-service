@@ -4,14 +4,28 @@ const router = express.Router();
 const {
   registerCustomer,
   loginCustomer,
+  getActiveSliders,
+  turnOnLocation,
+  turnOffLocation,
+  getMyLocationStatus,
+  getMyProfile,
+  updateMyProfile,
 } = require("../../controllers/customer/customerController");
 const { protect } = require("../../middleware/auth.middleware");
 const { isCustomer } = require("../../middleware/role.middleware");
-const sliderController = require("../../controllers/customer/customerController");
 
 router.post("/register", registerCustomer);
 router.post("/login", loginCustomer);
+router.get("/get-sliders", getActiveSliders);
 
-router.get("/get-sliders", sliderController.getActiveSliders);
+// for updating the locations
+router.get("/get-my-Location", protect, getMyLocationStatus);
+router.post("/location-on", protect, turnOnLocation);
+router.post("/location-off", protect, turnOffLocation);
+// Get profile (for Profile screen)
+router.get("/get-my-profile", protect, getMyProfile);
+
+// Update profile (for Edit Profile screen)
+router.put("/updated-my-profile", protect, updateMyProfile);
 
 module.exports = router;

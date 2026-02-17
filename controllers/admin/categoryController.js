@@ -1,5 +1,4 @@
-// controllers/admin/category.controller.js
-const ServiceCategory = require("../../models/adminModel/ServiceCategory");
+const ServiceCategory = require("../../models/AdminServiceCategory");
 const uploadToCloudinary = require("../../utils/uploadToCloudinary");
 
 /**
@@ -9,56 +8,73 @@ const uploadToCloudinary = require("../../utils/uploadToCloudinary");
  */
 exports.createCategory = async (req, res) => {
   try {
+    console.log("BODY:", req.body);
+    console.log("FILES:", req.files);
+
     const {
       name,
       slug,
-      type,
+      addCategory,
       darkColor,
       lightColor,
       status,
-
       metaTitle,
       metaDescription,
       metaKeywords,
       schemaMarkup,
     } = req.body;
 
-    /* ---------- VALIDATION ---------- */
-    if (!name || !slug || !darkColor || !lightColor) {
+    if (!name || !slug) {
       return res.status(400).json({
         success: false,
-        message: "Name, slug, dark color and light color are required",
+        message: "Name and slug are required",
       });
     }
 
-    if (!req.files?.image) {
+    // Check slug uniqueness
+    const existing = await ServiceCategory.findOne({ slug });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "Slug already exists",
+      });
+    }
+
+    // Image required
+    if (!req.files || !req.files.image || !req.files.image[0]) {
       return res.status(400).json({
         success: false,
         message: "Category image is required",
       });
     }
 
-    /* ---------- IMAGE UPLOAD ---------- */
-    const image = (
-      await uploadToCloudinary(req.files.image[0], "categories/image")
-    ).secure_url;
+    // Upload main image
+    const imageUpload = await uploadToCloudinary(
+      req.files.image[0],
+      "categories/image",
+    );
 
-    const metaImage = req.files?.metaImage
-      ? (await uploadToCloudinary(req.files.metaImage[0], "categories/seo"))
-          .secure_url
-      : "";
+    const image = imageUpload.secure_url;
 
-    /* ---------- CREATE CATEGORY ---------- */
+    // Upload meta image (optional)
+    let metaImage = "";
+    if (req.files.metaImage && req.files.metaImage[0]) {
+      const metaUpload = await uploadToCloudinary(
+        req.files.metaImage[0],
+        "categories/seo",
+      );
+      metaImage = metaUpload.secure_url;
+    }
+
+    // Save to DB
     const category = await ServiceCategory.create({
       name,
       slug,
-      type: type || "category",
+      addCategory,
       darkColor,
       lightColor,
-      status: status === "true",
-
+      status: status === "true" || status === true,
       image,
-
       seo: {
         metaTitle,
         metaDescription,
@@ -80,17 +96,9 @@ exports.createCategory = async (req, res) => {
     });
   } catch (error) {
     console.error("CREATE CATEGORY ERROR:", error);
-
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Category slug already exists",
-      });
-    }
-
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Server error while creating category",
     });
   }
 };
@@ -108,6 +116,7 @@ exports.getCategories = async (req, res) => {
       $or: [
         { name: { $regex: search, $options: "i" } },
         { slug: { $regex: search, $options: "i" } },
+        { addCategory: { $regex: search, $options: "i" } },
       ],
     };
 

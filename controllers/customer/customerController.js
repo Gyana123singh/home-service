@@ -1,8 +1,8 @@
 const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../../utils/generateToken");
-const Slider = require("../../models/adminModel/Slider");
-const ServiceCategory = require("../../models/adminModel/ServiceCategory");
+const Slider = require("../../models/AdminSlider");
+const ServiceCategory = require("../../models/AdminServiceCategory");
 
 // ================== REGISTER ==================
 exports.registerCustomer = async (req, res) => {
@@ -183,5 +183,178 @@ exports.getCategories = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+/**
+ * =========================
+ * TURN ON / UPDATE LOCATION
+ * =========================
+ * body: { latitude, longitude }
+ */
+exports.turnOnLocation = async (req, res) => {
+  try {
+    const userId = req.user.id; // from auth middleware
+    const { latitude, longitude } = req.body;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude and longitude are required",
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        locationEnabled: true,
+        location: {
+          type: "Point",
+          coordinates: [Number(longitude), Number(latitude)], // [lng, lat]
+        },
+        lastLocationUpdatedAt: new Date(),
+      },
+      { new: true },
+    );
+
+    return res.json({
+      success: true,
+      message: "Location turned ON and updated",
+      data: {
+        locationEnabled: user.locationEnabled,
+        location: user.location,
+      },
+    });
+  } catch (error) {
+    console.error("TURN ON LOCATION ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * =========================
+ * TURN OFF LOCATION
+ * =========================
+ */
+exports.turnOffLocation = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        locationEnabled: false,
+        location: {
+          type: "Point",
+          coordinates: null,
+        },
+      },
+      { new: true },
+    );
+
+    return res.json({
+      success: true,
+      message: "Location turned OFF",
+      data: {
+        locationEnabled: user.locationEnabled,
+      },
+    });
+  } catch (error) {
+    console.error("TURN OFF LOCATION ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * =========================
+ * GET MY LOCATION STATUS
+ * =========================
+ */
+exports.getMyLocationStatus = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).select(
+      "locationEnabled location lastLocationUpdatedAt",
+    );
+
+    return res.json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error("GET LOCATION STATUS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// =======================
+// GET MY PROFILE
+// =======================
+exports.getMyProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (err) {
+    console.error("Get profile error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =======================
+// UPDATE MY PROFILE
+// =======================
+exports.updateMyProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { name, email, phone } = req.body;
+
+    // Optional: avatar if you upload image
+    const avatar = req.file ? req.file.path : undefined;
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
+    if (avatar) updateData.avatar = avatar;
+
+    const user = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+    }).select("-password");
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
+    });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

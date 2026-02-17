@@ -44,7 +44,6 @@ const userSchema = new mongoose.Schema(
 
     phone: {
       type: String,
-      unique: true,
       sparse: true,
     },
 
@@ -134,5 +133,5 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
+userSchema.index({ location: "2dsphere" });
 module.exports = mongoose.model("User", userSchema);

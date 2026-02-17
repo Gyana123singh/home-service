@@ -1,42 +1,34 @@
 // models/ServiceCategory.js
 const mongoose = require("mongoose");
 
-const serviceCategorySchema = new mongoose.Schema(
+const AdminServiceCategory = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
       trim: true,
     },
 
     slug: {
       type: String,
-      required: true,
-      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    addCategory: {
+      type: String,
       lowercase: true,
       trim: true,
     },
 
-    type: {
-      type: String,
-      enum: ["category"],
-      default: "category",
-      required: true,
-    },
-
     image: {
       type: String,
-      required: true,
     },
 
     darkColor: {
       type: String,
-      required: true,
     },
 
     lightColor: {
       type: String,
-      required: true,
     },
 
     status: {
@@ -52,7 +44,7 @@ const serviceCategorySchema = new mongoose.Schema(
       metaImage: String,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-module.exports = mongoose.model("ServiceCategory", serviceCategorySchema);
+module.exports = mongoose.model("ServiceCategory", AdminServiceCategory);

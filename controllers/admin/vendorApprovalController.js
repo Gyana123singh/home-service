@@ -1,5 +1,5 @@
 const User = require("../../models/User");
-const KycAuditLog = require("../../models/adminModel/KycAuditLog");
+const KycAuditLog = require("../../models/VendorKycAuditLog");
 
 exports.approveRejectVendor = async (req, res) => {
   try {

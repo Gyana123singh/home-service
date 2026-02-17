@@ -5,12 +5,8 @@ const sliderSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["default", "category", "provider", "url"],
-      required: true,
-    },
-
-    appImage: {
-      type: String,
+      enum: ["special_offer"],
+      default: "special_offer",
       required: true,
     },
 
@@ -19,7 +15,13 @@ const sliderSchema = new mongoose.Schema(
       required: true,
     },
 
-    // optional redirect targets
+    // ====== Special Offer Content ======
+    tag: { type: String }, // e.g. "Painting", "Home Cleaning"
+    title: { type: String, default: "Special Offer" },
+    offerText: { type: String }, // e.g. "30% OFF", "Flat $50 OFF"
+    buttonText: { type: String, default: "Book Now" },
+
+    // ====== Redirect Targets ======
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ServiceCategory",

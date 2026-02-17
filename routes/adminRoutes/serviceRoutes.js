@@ -4,15 +4,30 @@ const serviceUpload = require("../../middleware/serviceMulter");
 const { protect } = require("../../middleware/auth.middleware");
 const { isAdmin } = require("../../middleware/role.middleware");
 
-// routes/admin/provider.routes.js
 router.post(
   "/add-service",
   protect,
   isAdmin,
-  serviceUpload,
+  serviceUpload, // must be a function (multer middleware)
   serviceController.createService,
 );
 
-router.get("/get-service", protect, isAdmin, serviceController.getServices);
+router.get("/get-service", protect, isAdmin, serviceController.getServicesAdmin);
+
+router.post(
+  "/create-service-options",
+  protect,
+  isAdmin,
+  serviceController.createOption,
+);
+
+router.get(
+  "/:categoryId",
+  protect,
+  isAdmin,
+  serviceController.getOptionsByCategory,
+);
+
+router.patch("/:id/toggle", protect, isAdmin, serviceController.toggleOption);
 
 module.exports = router;

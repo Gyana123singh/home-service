@@ -1,6 +1,6 @@
 // controllers/admin/provider.controller.js
 const User = require("../../models/User");
-const ProviderProfile = require("../../models/adminModel/ProviderProfile");
+const ProviderProfile = require("../../models/AdminProviderProfile");
 const uploadToCloudinary = require("../../utils/uploadToCloudinary");
 const bcrypt = require("bcryptjs");
 

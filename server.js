@@ -5,9 +5,9 @@ const http = require("http");
 const connectDB = require("./config/dbConnection");
 require("dotenv").config();
 
-const adminRouter = require("./routes/adminRoutes/adminRouter");
+const adminRouter = require("./routes/adminRoutes/index");
+const vendorRouter = require("./routes/vendorRoutes/serviceRoutes");
 const customerRouter = require("./routes/customerRoutes/customerRouter");
-const vendorRouter = require("./routes/vendorRoutes/vendorRouter");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
 const otpRoutes = require("./routes/otpAuth.routes/otpAuth.routes");
 
@@ -17,8 +17,6 @@ const providerRoutes = require("./routes/adminRoutes/providerRoutes");
 const serviceRouter = require("./routes/adminRoutes/serviceRoutes");
 const serviceCateogoryRouter = require("./routes/adminRoutes/categoryRoutes");
 const sliderRouter = require("./routes/adminRoutes/sliderRoutes");
-
-// for Vendors router
 
 // for Customers router
 
@@ -34,8 +32,8 @@ app.use(passport.initialize());
 
 // api for login and register for all roles
 app.use("/api/admin", adminRouter); // admin login
-app.use("/api/customer", customerRouter); // customer register and login
 app.use("/api/vendor", vendorRouter); //vendor register and login
+app.use("/api/customer", customerRouter); // customer register and login
 app.use("/api/googleAuth", googleAuthRoutes); // google login auth
 app.use("/api/otpAuth", otpRoutes);
 

@@ -1,7 +1,7 @@
 const User = require("../../models/User");
 const uploadToCloudinary = require("../../utils/uploadToCloudinary");
 const deleteFromCloudinary = require("../../utils/deleteFromCloudinary");
-const KycAuditLog = require("../../models/KycAuditLog");
+const KycAuditLog = require("../../models/VendorKycAuditLog");
 
 // reupload documnet from vendor side
 exports.reuploadDocuments = async (req, res) => {

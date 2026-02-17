@@ -10,14 +10,15 @@ router.post(
   protect,
   isAdmin,
   sliderUpload,
-  sliderController.createSlider
+  sliderController.createSlider,
 );
+
+router.get("/get-sliders", protect, isAdmin, sliderController.getSliders);
 
 router.get(
-  "/get-sliders",
+  "/special-offers",
   protect,
   isAdmin,
-  sliderController.getSliders
+  sliderController.getSpecialOffers,
 );
-
 module.exports = router;

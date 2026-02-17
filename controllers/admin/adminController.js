@@ -1,45 +1,63 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const User = require("../../models/User");
 
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // env credentials
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-
-    // check email
-    if (email !== adminEmail) {
-      return res.status(401).json({ message: "Invalid admin email" });
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
-    // compare password
-    const isPasswordMatch = password === adminPassword;
+    // Find admin
+    const admin = await User.findOne({ email, role: "admin" }).select(
+      "+password",
+    );
 
-    if (!isPasswordMatch) {
-      return res.status(401).json({ message: "Invalid admin password" });
+    if (!admin) {
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // generate token
+    // Compare password
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Generate token
     const token = jwt.sign(
-      {
-        id: "admin",
-        role: "admin",
-      },
+      { id: admin._id, role: admin.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
 
-    res.json({
+    return res.json({
+      success: true,
       message: "Admin login successful",
       token,
       admin: {
-        email: adminEmail,
-        role: "admin",
+        id: admin._id,
+        email: admin.email,
+        role: admin.role,
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("ADMIN LOGIN ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
   }
+};
+
+exports.getPendingVendors = async (req, res) => {
+  const vendors = await User.find({ role: "vendor", vendorStatus: "pending" });
+  res.json({ success: true, vendors });
+};
+
+exports.approveVendor = async (req, res) => {
+  const vendor = await User.findById(req.params.id);
+  vendor.vendorStatus = "approved";
+  await vendor.save();
+  res.json({ success: true });
 };
