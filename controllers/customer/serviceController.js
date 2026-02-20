@@ -1,22 +1,24 @@
-const ServiceCategory = require("../../models/ServiceCategory");
 const Service = require("../../models/AdminService");
 
-// Get services by category (STRING-based)
-
 // GET /api/services/by-category/:categoryId
+// GET /api/services/by-category/:categoryName
 exports.getServicesByCategory = async (req, res) => {
   try {
-    const { categoryId } = req.params;
+    const { categoryId } = req.params; // e.g. "cleaning" or "AC-Repair" or "AC Repair"
+
+    // Normalize: replace - and _ with space, trim
+    const normalized = categoryId.replace(/[-_]/g, " ").trim();
+
+    // Create case-insensitive regex
+    const regex = new RegExp(`^${normalized}$`, "i");
 
     const services = await Service.find({
-      category: categoryId,
+      category: regex, // ✅ case-insensitive match
       status: "active",
       approvedByAdmin: true,
-    })
-
-      .select(
-        "title shortDescription price discountedPrice images requirements",
-      );
+    }).select(
+      "title shortDescription price discountedPrice images requirements",
+    );
 
     return res.json({
       success: true,
@@ -40,10 +42,10 @@ exports.getServicesByCategory = async (req, res) => {
 // GET /api/services/:id
 exports.getServiceDetails = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { serviceId } = req.params;
 
     const service = await Service.findOne({
-      _id: id,
+      _id: serviceId,
       status: "active",
       approvedByAdmin: true,
     });
