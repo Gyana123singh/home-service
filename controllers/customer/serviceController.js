@@ -39,17 +39,16 @@ exports.getCategories = async (req, res) => {
   }
 };
 
-
 exports.getServicesByCategory = async (req, res) => {
   try {
-    const { categoryId } = req.params; // e.g. "Cleaning"
+    const { categoryId } = req.params;
 
-    const services = await Service.find({
-      category: new RegExp(`^${categoryId}$`, "i"), // ✅ case-insensitive match
-      status: "active",
-    }).select(
-      "title shortDescription price discountedPrice images requirements"
-    );
+    console.log("🟡 CATEGORY FROM URL:", categoryId);
+
+    // 🔴 TEMP: remove all filters
+    const services = await Service.find({});
+
+    console.log("🟢 TOTAL SERVICES IN DB:", services.length);
 
     return res.json({
       success: true,
@@ -68,10 +67,9 @@ exports.getServiceDetails = async (req, res) => {
   try {
     const { serviceId } = req.params;
 
-    const service = await Service.findOne({
-      _id: serviceId,
-      status: "active",
-    });
+    console.log("🔎 SERVICE ID FROM URL:", serviceId);
+
+    const service = await Service.findById(serviceId);
 
     if (!service) {
       return res.status(404).json({
@@ -117,8 +115,6 @@ exports.getServiceDetails = async (req, res) => {
 //     });
 //   }
 // };
-
-
 
 // GET /api/services/:id
 // exports.getServiceDetails = async (req, res) => {
