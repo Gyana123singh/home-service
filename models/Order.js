@@ -7,7 +7,7 @@ const orderSchema = new mongoose.Schema(
 
     items: [
       {
-        service: { type: mongoose.Schema.Types.ObjectId, ref: "Service" },
+        service: { type: mongoose.Schema.Types.ObjectId, ref: "AdminService" },
         selections: [
           {
             label: String,

@@ -15,7 +15,12 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // models/Booking.js (ADD)
 
+    category: {
+      type: String, // e.g. "Cleaning", "Electrical"
+      required: true,
+    },
     // 🛠️ Which service
     service: {
       type: mongoose.Schema.Types.ObjectId,

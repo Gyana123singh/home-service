@@ -39,13 +39,7 @@ exports.createService = async (req, res) => {
       requirements, // 🆕
     } = req.body;
 
-    if (
-      !title ||
-      !slug ||
-      !shortDescription ||
-      !category ||
-      !price
-    ) {
+    if (!title || !slug || !shortDescription || !category || !price) {
       return res
         .status(400)
         .json({ success: false, message: "Required fields missing" });
@@ -211,7 +205,6 @@ exports.getServicesAdmin = async (req, res) => {
 
     const services = await Service.find(filter)
       .populate("provider", "firstName email")
-      .populate("category", "name")
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));

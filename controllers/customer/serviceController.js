@@ -1,51 +1,32 @@
-const ServiceCategory = require("../../models/AdminServiceCategory");
+const ServiceCategory = require("../../models/ServiceCategory");
 const Service = require("../../models/AdminService");
-
-// Get active categories
-// exports.getCategories = async (req, res) => {
-//   try {
-//     const categories = await ServiceCategory.find({ status: true });
-
-//     return res.json({
-//       success: true,
-//       categories,
-//     });
-//   } catch (error) {
-//     console.error("GET CATEGORIES ERROR:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Failed to fetch categories",
-//     });
-//   }
-// };
 
 // Get services by category (STRING-based)
 
+// GET /api/services/by-category/:categoryId
 exports.getServicesByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
 
-    if (!categoryId) {
-      return res.status(400).json({
-        success: false,
-        message: "Category is required",
-      });
-    }
-
     const services = await Service.find({
-      category: categoryId, // e.g. "Painting", "Cleaning", "AC Repair"
+      category: categoryId,
       status: "active",
-    });
+      approvedByAdmin: true,
+    })
+
+      .select(
+        "title shortDescription price discountedPrice images requirements",
+      );
 
     return res.json({
       success: true,
-      services,
+      data: services,
     });
   } catch (error) {
     console.error("GET SERVICES BY CATEGORY ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch services for this category",
+      message: error.message,
     });
   }
 };
@@ -55,34 +36,31 @@ exports.getServicesByCategory = async (req, res) => {
  * GET CATEGORY LIST
  * =========================
  */
-exports.getCategories = async (req, res) => {
+
+// GET /api/services/:id
+exports.getServiceDetails = async (req, res) => {
   try {
-    const { search = "", page = 1, limit = 10 } = req.query;
+    const { id } = req.params;
 
-    const query = {
-      $or: [
-        { name: { $regex: search, $options: "i" } },
-        { slug: { $regex: search, $options: "i" } },
-        { addCategory: { $regex: search, $options: "i" } },
-      ],
-    };
+    const service = await Service.findOne({
+      _id: id,
+      status: "active",
+      approvedByAdmin: true,
+    });
 
-    const categories = await ServiceCategory.find(query)
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
-
-    const total = await ServiceCategory.countDocuments(query);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found",
+      });
+    }
 
     return res.json({
       success: true,
-      page: Number(page),
-      limit: Number(limit),
-      total,
-      data: categories,
+      data: service,
     });
   } catch (error) {
-    console.error("GET CATEGORIES ERROR:", error);
+    console.error("GET SERVICE DETAILS ERROR:", error);
     return res.status(500).json({
       success: false,
       message: error.message,

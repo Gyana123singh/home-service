@@ -2,7 +2,7 @@ const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../../utils/generateToken");
 const Slider = require("../../models/AdminSlider");
-const ServiceCategory = require("../../models/AdminServiceCategory");
+const ServiceCategory = require("../../models/ServiceCategory");
 
 // ================== REGISTER ==================
 exports.registerCustomer = async (req, res) => {

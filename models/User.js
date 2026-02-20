@@ -19,6 +19,12 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    vendorOnboardingStep: {
+      type: String,
+      enum: ["info", "identity", "selfie", "completed"],
+      default: "info",
+    },
+    selfieImage: { type: String, select: false },
     locationEnabled: {
       type: Boolean,
       default: false,
@@ -94,7 +100,18 @@ const userSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+    // models/User.js (ADD these fields inside schema)
 
+    categories: [
+      {
+        type: String, // e.g. "Cleaning", "Electrical", "Plumbing"
+      },
+    ],
+
+    activeCategory: {
+      type: String, // currently selected category in vendor app
+      default: null,
+    },
     address: {
       addressLine1: String,
       addressLine2: String,
@@ -102,7 +119,11 @@ const userSchema = new mongoose.Schema(
       state: String,
       pincode: String,
     },
-
+    phone: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     // ✅ KYC UNIQUE
     aadhaarNumber: {
       type: String,

@@ -155,10 +155,9 @@ exports.checkOut = async (req, res) => {
           customer: userId,
           vendor: vendorId,
           service: item.service._id,
+          category: item.service.category, // ✅ IMPORTANT
           date: item.date,
-          selections: {
-            // you can map properly if needed
-          },
+          selections: item.selections,
           basePrice: item.basePrice,
           totalPrice: item.totalPrice,
           status: "upcoming",

@@ -1,4 +1,4 @@
-const ServiceCategory = require("../../models/AdminServiceCategory");
+const ServiceCategory = require("../../models/ServiceCategory");
 const uploadToCloudinary = require("../../utils/uploadToCloudinary");
 
 /**
