@@ -110,7 +110,6 @@ exports.createService = async (req, res) => {
       durationMinutes,
       membersRequired,
       maxQuantity,
-      category, // ✅ string like "Painting"
       priceType,
       taxId,
       price,

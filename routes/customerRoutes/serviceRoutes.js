@@ -2,6 +2,7 @@
 const router = require("express").Router();
 const customerController = require("../../controllers/customer/serviceController");
 
+router.get("/get-all-categories", customerController.getCategories);
 router.get(
   "/by-category/:categoryId",
   customerController.getServicesByCategory,
