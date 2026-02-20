@@ -33,11 +33,6 @@ exports.getServicesByCategory = async (req, res) => {
   }
 };
 
-/**
- * =========================
- * GET CATEGORY LIST
- * =========================
- */
 
 // GET /api/services/:id
 exports.getServiceDetails = async (req, res) => {

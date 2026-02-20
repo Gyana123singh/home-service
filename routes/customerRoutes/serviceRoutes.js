@@ -6,7 +6,7 @@ router.get(
   "/by-category/:categoryId",
   customerController.getServicesByCategory,
 );
-router.get("/:serviceId", customerController.getServiceDetails);
+router.get("/get-service/:serviceId", customerController.getServiceDetails);
 // router.get("/categories", customerController.getCategories);
 
 module.exports = router;
