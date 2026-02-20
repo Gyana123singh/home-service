@@ -40,16 +40,10 @@ exports.getCategories = async (req, res) => {
 };
 exports.getServicesByCategory = async (req, res) => {
   try {
-    const { categoryId } = req.params; // e.g. "cleaning" or "AC-Repair" or "AC Repair"
-
-    // Normalize: replace - and _ with space, trim
-    const normalized = categoryId.replace(/[-_]/g, " ").trim();
-
-    // Create case-insensitive regex
-    const regex = new RegExp(`^${normalized}$`, "i");
+    const { categoryId } = req.params; // e.g. "cleaning"
 
     const services = await Service.find({
-      category: regex, // ✅ case-insensitive match
+      category: categoryId, // ✅ EXACT MATCH WITH SLUG
       status: "active",
       approvedByAdmin: true,
     }).select(
