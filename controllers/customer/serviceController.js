@@ -38,16 +38,17 @@ exports.getCategories = async (req, res) => {
     });
   }
 };
+
+
 exports.getServicesByCategory = async (req, res) => {
   try {
-    const { categoryId } = req.params; // e.g. "cleaning"
+    const { categoryId } = req.params; // e.g. "Cleaning"
 
     const services = await Service.find({
-      category: categoryId, // ✅ EXACT MATCH WITH SLUG
+      category: new RegExp(`^${categoryId}$`, "i"), // ✅ case-insensitive match
       status: "active",
-      approvedByAdmin: true,
     }).select(
-      "title shortDescription price discountedPrice images requirements",
+      "title shortDescription price discountedPrice images requirements"
     );
 
     return res.json({
@@ -63,7 +64,6 @@ exports.getServicesByCategory = async (req, res) => {
   }
 };
 
-// GET /api/services/:id
 exports.getServiceDetails = async (req, res) => {
   try {
     const { serviceId } = req.params;
@@ -71,7 +71,6 @@ exports.getServiceDetails = async (req, res) => {
     const service = await Service.findOne({
       _id: serviceId,
       status: "active",
-      approvedByAdmin: true,
     });
 
     if (!service) {
@@ -93,3 +92,61 @@ exports.getServiceDetails = async (req, res) => {
     });
   }
 };
+
+// exports.getServicesByCategory = async (req, res) => {
+//   try {
+//     const { categoryId } = req.params; // e.g. "cleaning"
+
+//     const services = await Service.find({
+//       category: categoryId, // ✅ EXACT MATCH WITH SLUG
+//       status: "active",
+//       approvedByAdmin: true,
+//     }).select(
+//       "title shortDescription price discountedPrice images requirements",
+//     );
+
+//     return res.json({
+//       success: true,
+//       data: services,
+//     });
+//   } catch (error) {
+//     console.error("GET SERVICES BY CATEGORY ERROR:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+
+
+// GET /api/services/:id
+// exports.getServiceDetails = async (req, res) => {
+//   try {
+//     const { serviceId } = req.params;
+
+//     const service = await Service.findOne({
+//       _id: serviceId,
+//       status: "active",
+//       approvedByAdmin: true,
+//     });
+
+//     if (!service) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Service not found",
+//       });
+//     }
+
+//     return res.json({
+//       success: true,
+//       data: service,
+//     });
+//   } catch (error) {
+//     console.error("GET SERVICE DETAILS ERROR:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
