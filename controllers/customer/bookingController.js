@@ -1,4 +1,4 @@
-const Booking = require("../../models/CustomerBooking");
+const Booking = require("../../models/Booking");
 const Service = require("../../models/AdminService");
 
 

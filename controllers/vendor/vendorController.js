@@ -2,8 +2,8 @@ const User = require("../../models/User");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../../utils/generateToken");
 const uploadToCloudinary = require("../../utils/uploadToCloudinary");
-const Booking = require("../../models/VendorBooking");
-const Wallet = require("../../models/VendorWallet");
+const Booking = require("../../models/Booking");
+const Wallet = require("../../models/Wallet");
 
 exports.registerVendor = async (req, res) => {
   try {
@@ -155,28 +155,16 @@ exports.vendorLogin = async (req, res) => {
   }
 };
 
-exports.getDashboard = async (req, res) => {
+exports.getMyBookings = async (req, res) => {
   const vendorId = req.user._id;
+  const bookings = await Booking.find({ vendor: vendorId }).populate(
+    "customer service",
+  );
+  res.json({ success: true, data: bookings });
+};
 
-  const totalBookings = await Booking.countDocuments({ vendor: vendorId });
-  const pendingJobs = await Booking.countDocuments({
-    vendor: vendorId,
-    status: "awaiting",
-  });
-  const rescheduled = await Booking.countDocuments({
-    vendor: vendorId,
-    status: "rescheduled",
-  });
-
+exports.getMyWallet = async (req, res) => {
+  const vendorId = req.user._id;
   const wallet = await Wallet.findOne({ user: vendorId });
-
-  res.json({
-    success: true,
-    stats: {
-      totalEarnings: wallet?.totalEarnings || 0,
-      totalBookings,
-      pendingJobs,
-      rescheduled,
-    },
-  });
+  res.json({ success: true, data: wallet || { balance: 0, totalEarnings: 0 } });
 };

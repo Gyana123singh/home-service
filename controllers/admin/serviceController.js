@@ -10,13 +10,13 @@ const ServiceOption = require("../../models/AdminServiceOption");
  */
 exports.createService = async (req, res) => {
   try {
+    const provider = req.user._id; // ✅ logged in user
     const {
       title,
       slug,
       shortDescription,
       description,
       tags,
-      provider,
       category,
       durationMinutes,
       membersRequired,
@@ -43,7 +43,6 @@ exports.createService = async (req, res) => {
       !title ||
       !slug ||
       !shortDescription ||
-      !provider ||
       !category ||
       !price
     ) {
@@ -117,6 +116,7 @@ exports.createService = async (req, res) => {
       durationMinutes,
       membersRequired,
       maxQuantity,
+      category, // ✅ string like "Painting"
       priceType,
       taxId,
       price,

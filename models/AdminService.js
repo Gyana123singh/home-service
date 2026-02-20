@@ -12,7 +12,8 @@ const serviceSchema = new mongoose.Schema(
 
     // RELATIONS
     provider: {
-      type: String, // e.g. "John Provider"
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
     // category: {
@@ -89,4 +90,4 @@ const serviceSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model("Service", serviceSchema);
+module.exports = mongoose.model("AdminService", serviceSchema);

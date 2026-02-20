@@ -1,8 +1,11 @@
 const Cart = require("../../models/Cart");
 const Service = require("../../models/AdminService");
+const Order = require("../../models/Order");
+const Booking = require("../../models/Booking");
 const { calculateServicePrice } = require("../../utils/calculateServicePrice");
+const { creditVendor } = require("../../utils/walletService");
 
-exports.addToCart = async (req, res) => {
+exports.addServiceToCart = async (req, res) => {
   try {
     const userId = req.user._id; // from auth middleware
     const { serviceId, selections, date, quantity } = req.body;
@@ -90,4 +93,97 @@ exports.updateQuantity = async (req, res) => {
     { new: true },
   );
   res.json({ success: true, data: item });
+};
+
+exports.checkOut = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { paymentMethod, address } = req.body;
+
+    if (!paymentMethod || !address) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment method and address required",
+      });
+    }
+
+    const cartItems = await Cart.find({ user: userId }).populate("service");
+
+    if (cartItems.length === 0) {
+      return res.status(400).json({ success: false, message: "Cart is empty" });
+    }
+
+    // 💰 Calculate totals
+    let subTotal = 0;
+
+    cartItems.forEach((item) => {
+      subTotal += item.totalPrice * item.quantity;
+    });
+
+    const tax = subTotal * 0.18; // 18% GST
+    const grandTotal = subTotal + tax;
+
+    // ⚠️ For now: assume single-vendor per order
+    const vendorId = cartItems[0].service.provider;
+
+    // 🧾 Create Order
+    const order = await Order.create({
+      customer: userId,
+      vendor: vendorId,
+      items: cartItems.map((item) => ({
+        service: item.service._id,
+        selections: item.selections,
+        date: item.date,
+        basePrice: item.basePrice,
+        addonsPrice: item.addonsPrice,
+        totalPrice: item.totalPrice,
+        quantity: item.quantity,
+      })),
+      address,
+      paymentMethod,
+      paymentStatus: paymentMethod === "COD" ? "pending" : "paid",
+      subTotal,
+      tax,
+      grandTotal,
+    });
+
+    // ✅ If payment is successful (simulate)
+    if (paymentMethod !== "COD") {
+      // 1️⃣ Create Booking(s)
+      for (const item of cartItems) {
+        await Booking.create({
+          customer: userId,
+          vendor: vendorId,
+          service: item.service._id,
+          date: item.date,
+          selections: {
+            // you can map properly if needed
+          },
+          basePrice: item.basePrice,
+          totalPrice: item.totalPrice,
+          status: "upcoming",
+        });
+      }
+
+      // 2️⃣ Credit Vendor Wallet
+      await creditVendor(vendorId, subTotal);
+
+      // 3️⃣ Clear Cart
+      await Cart.deleteMany({ user: userId });
+
+      // 4️⃣ Update Order
+      order.paymentStatus = "paid";
+      order.status = "confirmed";
+      await order.save();
+    }
+
+    res.json({
+      success: true,
+      message: "Order placed successfully",
+      data: order,
+    });
+  } catch (err) {
+    console.error("Checkout error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
