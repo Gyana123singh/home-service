@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
     firstName: String,
     lastName: String,
 
-    // ================= LOCATION (ADD THIS) =================
+    // ================= LOCATION (GEOJSON) =================
     location: {
       type: {
         type: String,
@@ -15,16 +15,18 @@ const userSchema = new mongoose.Schema(
       },
       coordinates: {
         type: [Number], // [longitude, latitude]
-        default: null,
+        default: [],
       },
     },
 
-    vendorOnboardingStep: {
-      type: String,
-      enum: ["info", "identity", "selfie", "completed"],
-      default: "info",
+    // Human-readable location text (for UI: "Delhi, India")
+    locationText: {
+      city: String,
+      state: String,
+      country: String,
+      fullAddress: String,
     },
-    selfieImage: { type: String, select: false },
+
     locationEnabled: {
       type: Boolean,
       default: false,
@@ -34,6 +36,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
+    // ================= AUTH / PROFILE =================
     username: {
       type: String,
       unique: true,
@@ -50,10 +53,10 @@ const userSchema = new mongoose.Schema(
 
     phone: {
       type: String,
+      unique: true,
       sparse: true,
     },
 
-    // ================= AUTH =================
     password: {
       type: String,
       select: false,
@@ -80,13 +83,17 @@ const userSchema = new mongoose.Schema(
     },
 
     // ================= VENDOR FIELDS =================
+    vendorOnboardingStep: {
+      type: String,
+      enum: ["info", "identity", "selfie", "completed"],
+      default: "info",
+    },
+
+    selfieImage: { type: String, select: false },
+
     designation: String,
 
-    zones: [
-      {
-        type: String,
-      },
-    ],
+    zones: [String],
 
     commissionType: {
       type: String,
@@ -100,7 +107,6 @@ const userSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
-    // models/User.js (ADD these fields inside schema)
 
     categories: [
       {
@@ -109,9 +115,11 @@ const userSchema = new mongoose.Schema(
     ],
 
     activeCategory: {
-      type: String, // currently selected category in vendor app
+      type: String,
       default: null,
     },
+
+    // ================= ADDRESS =================
     address: {
       addressLine1: String,
       addressLine2: String,
@@ -119,12 +127,8 @@ const userSchema = new mongoose.Schema(
       state: String,
       pincode: String,
     },
-    phone: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
-    // ✅ KYC UNIQUE
+
+    // ================= KYC =================
     aadhaarNumber: {
       type: String,
       unique: true,
@@ -137,12 +141,11 @@ const userSchema = new mongoose.Schema(
       sparse: true,
     },
 
-    // ✅ Hide documents by default
     documents: {
       aadhaarImage: { type: String, select: false },
       panImage: { type: String, select: false },
       passportPhoto: { type: String, select: false },
-      companyCertificate: { type: String, select: false }, //trade liacense
+      companyCertificate: { type: String, select: false },
     },
 
     referralCode: String,
@@ -152,7 +155,10 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
+
+// ================= GEO INDEX =================
 userSchema.index({ location: "2dsphere" });
+
 module.exports = mongoose.model("User", userSchema);

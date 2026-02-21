@@ -48,7 +48,7 @@ router.post(
 // =========================
 // VENDOR DASHBOARD
 // =========================
-router.get("/me", protect, isVendor, getVendorProfile);
+router.get("/get-profile", protect, isVendor, getVendorProfile);
 
 router.post("/set-categories", protect, isVendor, setVendorCategories);
 router.post("/set-active-category", protect, isVendor, setActiveCategory);

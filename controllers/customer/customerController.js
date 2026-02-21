@@ -197,7 +197,7 @@ exports.turnOnLocation = async (req, res) => {
     const userId = req.user.id; // from auth middleware
     const { latitude, longitude } = req.body;
 
-    if (!latitude || !longitude) {
+    if (latitude === undefined || longitude === undefined) {
       return res.status(400).json({
         success: false,
         message: "Latitude and longitude are required",
@@ -247,10 +247,7 @@ exports.turnOffLocation = async (req, res) => {
       userId,
       {
         locationEnabled: false,
-        location: {
-          type: "Point",
-          coordinates: null,
-        },
+        $unset: { location: "" },
       },
       { new: true },
     );

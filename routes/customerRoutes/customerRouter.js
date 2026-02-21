@@ -18,7 +18,7 @@ router.post("/login", loginCustomer);
 router.get("/get-sliders", getActiveSliders);
 
 // for updating the locations
-router.get("/get-my-Location", protect, getMyLocationStatus);
+router.get("/get-my-location", protect, getMyLocationStatus);
 router.post("/location-on", protect, turnOnLocation);
 router.post("/location-off", protect, turnOffLocation);
 // Get profile (for Profile screen)
