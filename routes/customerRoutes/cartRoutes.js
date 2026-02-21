@@ -8,7 +8,7 @@ const {
   checkOut,
 } = require("../../controllers/customer/cartController");
 const { protect } = require("../../middleware/auth.middleware");
-router.post("/add-service-To-Cart", protect, addServiceToCart);
+router.post("/add-service-to-cart", protect, addServiceToCart);
 router.get("/my-cart", protect, getMyCart);
 router.delete("/remove/:id", protect, removeFromCart);
 
