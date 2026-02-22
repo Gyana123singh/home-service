@@ -44,8 +44,8 @@ router.delete("/remove-from-favorites/:serviceId", protect, removeFromFavorites)
 //Saved Addresses
 router.get("/get-my-addresses", protect, getMyAddresses);
 router.post("/add-address", protect, addAddress);
-router.put("update-address/:addressId", protect, updateAddress);
-router.delete("delete-address/:addressId", protect, deleteAddress);
+router.put("/update-address/:addressId", protect, updateAddress);
+router.delete("/delete-address/:addressId", protect, deleteAddress);
 router.put("/set-default/:addressId", protect, setDefaultAddress);
 
 
