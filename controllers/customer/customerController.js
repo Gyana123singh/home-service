@@ -357,14 +357,15 @@ exports.updateMyProfile = async (req, res) => {
   }
 };
 
-
 // GET /api/favorites
 exports.getMyFavorites = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate("favorites");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     return res.json({
@@ -394,7 +395,9 @@ exports.addToFavorites = async (req, res) => {
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (!user.favorites.includes(serviceId)) {
@@ -437,15 +440,15 @@ exports.removeFromFavorites = async (req, res) => {
   }
 };
 
-
-
 // GET /api/addresses
 exports.getMyAddresses = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     return res.json({
@@ -467,7 +470,9 @@ exports.addAddress = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const newAddress = req.body;
@@ -501,7 +506,9 @@ exports.updateAddress = async (req, res) => {
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const address = user.savedAddresses.id(addressId);
@@ -532,11 +539,13 @@ exports.deleteAddress = async (req, res) => {
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     user.savedAddresses = user.savedAddresses.filter(
-      (a) => a._id.toString() !== addressId
+      (a) => a._id.toString() !== addressId,
     );
 
     await user.save();
@@ -558,7 +567,9 @@ exports.setDefaultAddress = async (req, res) => {
 
     const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     user.savedAddresses.forEach((addr) => {
