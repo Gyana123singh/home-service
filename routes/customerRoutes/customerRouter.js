@@ -37,8 +37,8 @@ router.put("/updated-my-profile", protect, updateMyProfile);
 
 //Favorites Backend
 router.get("/get-my-favorites", protect, getMyFavorites);
-router.post("add-to-favorites/:serviceId", protect, addToFavorites);
-router.delete("remove-from-favorites/:serviceId", protect, removeFromFavorites);
+router.post("/add-to-favorites/:serviceId", protect, addToFavorites);
+router.delete("/remove-from-favorites/:serviceId", protect, removeFromFavorites);
 
 
 //Saved Addresses
