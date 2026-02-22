@@ -37,15 +37,15 @@ router.put("/updated-my-profile", protect, updateMyProfile);
 
 //Favorites Backend
 router.get("/get-my-favorites", protect, getMyFavorites);
-router.post("/:serviceId", protect, addToFavorites);
-router.delete("/:serviceId", protect, removeFromFavorites);
+router.post("add-to-favorites/:serviceId", protect, addToFavorites);
+router.delete("remove-from-favorites/:serviceId", protect, removeFromFavorites);
 
 
 //Saved Addresses
 router.get("/get-my-addresses", protect, getMyAddresses);
 router.post("/add-address", protect, addAddress);
-router.put("/:addressId", protect, updateAddress);
-router.delete("/:addressId", protect, deleteAddress);
+router.put("update-address/:addressId", protect, updateAddress);
+router.delete("delete-address/:addressId", protect, deleteAddress);
 router.put("/set-default/:addressId", protect, setDefaultAddress);
 
 
