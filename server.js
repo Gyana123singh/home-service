@@ -55,8 +55,13 @@ app.get("/", (req, res) => {
 
 const server = http.createServer(app);
 
-// 🔌 Initialize Socket.IO from separate file
-initSocket(server, app);
+// 🔌 Initialize Socket.IO with CORS from HERE
+initSocket(server, app, {
+  cors: {
+    origin: process.env.SOCKET_ORIGIN || "*", // e.g. http://localhost:3000
+    methods: ["GET", "POST"],
+  },
+});
 
 // ================= START SERVER =================
 

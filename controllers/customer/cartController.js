@@ -81,18 +81,42 @@ exports.getMyCart = async (req, res) => {
 };
 
 exports.removeFromCart = async (req, res) => {
-  await Cart.deleteOne({ _id: req.params.id, user: req.user._id });
-  res.json({ success: true });
+  try {
+    await Cart.deleteOne({ _id: req.params.id, user: req.user._id });
+    res.json({ success: true, message: "Removed from cart" });
+  } catch (err) {
+    console.error("Remove from cart error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
 
 exports.updateQuantity = async (req, res) => {
-  const { quantity } = req.body;
-  const item = await Cart.findOneAndUpdate(
-    { _id: req.params.id, user: req.user._id },
-    { quantity },
-    { new: true },
-  );
-  res.json({ success: true, data: item });
+  try {
+    const { quantity } = req.body;
+
+    if (!quantity || quantity < 1) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Quantity must be at least 1" });
+    }
+
+    const item = await Cart.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { quantity },
+      { new: true },
+    );
+
+    if (!item) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Cart item not found" });
+    }
+
+    res.json({ success: true, data: item });
+  } catch (err) {
+    console.error("Update quantity error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
 
 exports.checkOut = async (req, res) => {

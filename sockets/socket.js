@@ -1,14 +1,10 @@
+// sockets/socket.js
 const { Server } = require("socket.io");
 
 let io; // shared instance
 
-function initSocket(server, app) {
-  io = new Server(server, {
-    cors: {
-      origin: "*", // change in production
-      methods: ["GET", "POST"],
-    },
-  });
+function initSocket(server, app, options = {}) {
+  io = new Server(server, options);
 
   // Make io available in controllers: req.app.get("io")
   app.set("io", io);
