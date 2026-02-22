@@ -1,4 +1,5 @@
 const User = require("../../models/User");
+const Service = require("../../models/AdminService");
 const bcrypt = require("bcryptjs");
 const generateToken = require("../../utils/generateToken");
 const Slider = require("../../models/AdminSlider");
@@ -353,5 +354,225 @@ exports.updateMyProfile = async (req, res) => {
   } catch (err) {
     console.error("Update profile error:", err);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
+// GET /api/favorites
+exports.getMyFavorites = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate("favorites");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    return res.json({
+      success: true,
+      data: user.favorites || [],
+    });
+  } catch (error) {
+    console.error("GET FAVORITES ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// POST /api/favorites/:serviceId
+exports.addToFavorites = async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Service not found" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!user.favorites.includes(serviceId)) {
+      user.favorites.push(serviceId);
+      await user.save();
+    }
+
+    return res.json({
+      success: true,
+      message: "Added to favorites",
+    });
+  } catch (error) {
+    console.error("ADD TO FAVORITES ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// DELETE /api/favorites/:serviceId
+exports.removeFromFavorites = async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $pull: { favorites: serviceId },
+    });
+
+    return res.json({
+      success: true,
+      message: "Removed from favorites",
+    });
+  } catch (error) {
+    console.error("REMOVE FAVORITE ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+
+// GET /api/addresses
+exports.getMyAddresses = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    return res.json({
+      success: true,
+      data: user.savedAddresses || [],
+    });
+  } catch (error) {
+    console.error("GET ADDRESSES ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// POST /api/addresses
+exports.addAddress = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const newAddress = req.body;
+
+    // If first address, make it default
+    if (user.savedAddresses.length === 0) {
+      newAddress.isDefault = true;
+    }
+
+    user.savedAddresses.push(newAddress);
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: "Address added",
+      data: user.savedAddresses,
+    });
+  } catch (error) {
+    console.error("ADD ADDRESS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// PUT /api/addresses/:addressId
+exports.updateAddress = async (req, res) => {
+  try {
+    const { addressId } = req.params;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const address = user.savedAddresses.id(addressId);
+
+    if (!address) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Address not found" });
+    }
+
+    Object.assign(address, req.body);
+    await user.save();
+
+    return res.json({ success: true, message: "Address updated" });
+  } catch (error) {
+    console.error("UPDATE ADDRESS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// DELETE /api/addresses/:addressId
+exports.deleteAddress = async (req, res) => {
+  try {
+    const { addressId } = req.params;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.savedAddresses = user.savedAddresses.filter(
+      (a) => a._id.toString() !== addressId
+    );
+
+    await user.save();
+
+    return res.json({ success: true, message: "Address deleted" });
+  } catch (error) {
+    console.error("DELETE ADDRESS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// PUT /api/addresses/set-default/:addressId
+exports.setDefaultAddress = async (req, res) => {
+  try {
+    const { addressId } = req.params;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.savedAddresses.forEach((addr) => {
+      addr.isDefault = addr._id.toString() === addressId;
+    });
+
+    await user.save();
+
+    return res.json({ success: true, message: "Default address set" });
+  } catch (error) {
+    console.error("SET DEFAULT ADDRESS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

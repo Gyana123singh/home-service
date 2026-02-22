@@ -149,13 +149,32 @@ const userSchema = new mongoose.Schema(
     },
 
     referralCode: String,
+    // models/User.js (add these fields inside schema)
 
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "AdminService",
+      },
+    ],
+
+    savedAddresses: [
+      {
+        label: { type: String, default: "Home" }, // Home, Office, etc
+        addressLine1: String,
+        addressLine2: String,
+        city: String,
+        state: String,
+        pincode: String,
+        isDefault: { type: Boolean, default: false },
+      },
+    ],
     isActive: {
       type: Boolean,
       default: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // ================= GEO INDEX =================

@@ -5,6 +5,8 @@ const http = require("http");
 const connectDB = require("./config/dbConnection");
 require("dotenv").config();
 
+const { initSocket } = require("./sockets/socket"); // 👈 import socket init
+
 const adminRouter = require("./routes/adminRoutes/index");
 const vendorRouter = require("./routes/vendorRoutes/index");
 const customerRouter = require("./routes/customerRoutes/index");
@@ -18,41 +20,45 @@ const serviceRouter = require("./routes/adminRoutes/serviceRoutes");
 const serviceCateogoryRouter = require("./routes/adminRoutes/categoryRoutes");
 const sliderRouter = require("./routes/adminRoutes/sliderRoutes");
 
-// for Customers router
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(morgan("dev"));
+
 connectDB();
 
 const passport = require("./config/passport");
-
 app.use(passport.initialize());
 
-// api for login and register for all roles
-app.use("/api/admin", adminRouter); // admin login
-app.use("/api/vendor", vendorRouter); //vendor register and login
-app.use("/api/customer", customerRouter); // customer register and login
-app.use("/api/googleAuth", googleAuthRoutes); // google login auth
+// ================= ROUTES =================
+
+app.use("/api/admin", adminRouter);
+app.use("/api/vendor", vendorRouter);
+app.use("/api/customer", customerRouter);
+app.use("/api/googleAuth", googleAuthRoutes);
 app.use("/api/otpAuth", otpRoutes);
 
-// for Admins router
+// admin routes
 app.use("/api/admin/approval", vendorApprovalRoutes);
 app.use("/api/admin/provider", providerRoutes);
 app.use("/api/admin/service", serviceRouter);
 app.use("/api/admin/service-category", serviceCateogoryRouter);
 app.use("/api/admin/slider", sliderRouter);
 
-// for Vendors router
-
-// for Customers router
-
+// health check
 app.get("/", (req, res) => {
   res.send("Home Service Backend Running");
 });
 
+// ================= HTTP SERVER =================
+
 const server = http.createServer(app);
+
+// 🔌 Initialize Socket.IO from separate file
+initSocket(server, app);
+
+// ================= START SERVER =================
 
 const PORT = process.env.PORT || 5001;
 
