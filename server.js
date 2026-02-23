@@ -38,7 +38,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/vendor", vendorRouter);
 app.use("/api/customer", customerRouter);
 app.use("/api/googleAuth", googleAuthRoutes);
-app.use("/api/otpAuth", otpRoutes);
+app.use("/api/otp/auth", otpRoutes);
 app.use("/api/customer/payment", paymentRoutes);
 
 // admin routes
