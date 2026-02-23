@@ -4,6 +4,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 async function createStripeCheckoutSession({ amount, orderId, userId }) {
   const baseSuccessUrl = process.env.FRONTEND_SUCCESS_URL;
+  const cancelUrl = process.env.FRONTEND_CANCEL_URL;
+
+  if (!baseSuccessUrl || !cancelUrl) {
+    throw new Error(
+      "FRONTEND_SUCCESS_URL or FRONTEND_CANCEL_URL is not defined in .env",
+    );
+  }
+
   const joinChar = baseSuccessUrl.includes("?") ? "&" : "?";
 
   const session = await stripe.checkout.sessions.create({
@@ -26,7 +34,7 @@ async function createStripeCheckoutSession({ amount, orderId, userId }) {
       userId: userId.toString(),
     },
     success_url: `${baseSuccessUrl}${joinChar}session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: process.env.FRONTEND_CANCEL_URL,
+    cancel_url: cancelUrl,
   });
 
   return session;

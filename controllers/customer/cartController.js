@@ -117,6 +117,14 @@ exports.updateQuantity = async (req, res) => {
 // ======================= CHECKOUT =======================
 exports.checkOut = async (req, res) => {
   try {
+    // 🔐 Guard: user must be authenticated
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized. Please login again.",
+      });
+    }
+
     const io = req.app.get("io"); // may be undefined if socket not ready
     const userId = req.user._id;
     const { paymentMethod, address } = req.body;
@@ -159,6 +167,14 @@ exports.checkOut = async (req, res) => {
 
     const tax = subTotal * 0.18;
     const grandTotal = subTotal + tax;
+
+    // 🛡️ Guard: total must be valid
+    if (!grandTotal || isNaN(grandTotal) || grandTotal <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid total amount",
+      });
+    }
 
     // ✅ SAFE VENDOR ID
     const vendorId =
