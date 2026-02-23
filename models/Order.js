@@ -38,9 +38,10 @@ const orderSchema = new mongoose.Schema(
       pincode: String,
     },
 
+    // ✅ UPDATED: Added "STRIPE" to enum
     paymentMethod: {
       type: String,
-      enum: ["UPI", "CARD", "NET_BANKING", "COD"],
+      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE"],
       required: true,
     },
 
@@ -59,8 +60,12 @@ const orderSchema = new mongoose.Schema(
       enum: ["placed", "confirmed", "completed", "cancelled"],
       default: "placed",
     },
+
     escrowAmount: { type: Number, default: 0 },
-    paymentGateway: { type: String, default: "phonepe" },
+
+    // 🔁 Optional: change default gateway to stripe
+    paymentGateway: { type: String, default: "stripe" },
+
     transactionId: { type: String },
   },
   { timestamps: true },
