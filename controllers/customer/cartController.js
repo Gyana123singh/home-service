@@ -7,6 +7,7 @@ const { calculateServicePrice } = require("../../utils/calculateServicePrice");
 const { creditVendor } = require("../../utils/walletService");
 const { createStripeCheckoutSession } = require("../../utils/stripe");
 
+// ======================= ADD TO CART =======================
 exports.addServiceToCart = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -61,16 +62,19 @@ exports.addServiceToCart = async (req, res) => {
   }
 };
 
+// ======================= GET CART =======================
 exports.getMyCart = async (req, res) => {
   try {
     const userId = req.user._id;
     const cartItems = await Cart.find({ user: userId }).populate("service");
     res.json({ success: true, data: cartItems });
   } catch (err) {
+    console.error("Get cart error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// ======================= REMOVE FROM CART =======================
 exports.removeFromCart = async (req, res) => {
   try {
     await Cart.deleteOne({ _id: req.params.id, user: req.user._id });
@@ -81,6 +85,7 @@ exports.removeFromCart = async (req, res) => {
   }
 };
 
+// ======================= UPDATE QUANTITY =======================
 exports.updateQuantity = async (req, res) => {
   try {
     const { quantity } = req.body;
@@ -109,9 +114,10 @@ exports.updateQuantity = async (req, res) => {
   }
 };
 
+// ======================= CHECKOUT =======================
 exports.checkOut = async (req, res) => {
   try {
-    const io = req.app.get("io");
+    const io = req.app.get("io"); // may be undefined if socket not ready
     const userId = req.user._id;
     const { paymentMethod, address } = req.body;
 
@@ -122,11 +128,30 @@ exports.checkOut = async (req, res) => {
       });
     }
 
+    if (!["COD", "STRIPE"].includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment method",
+      });
+    }
+
     const cartItems = await Cart.find({ user: userId }).populate("service");
+
     if (cartItems.length === 0) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
     }
 
+    // ✅ PROTECT AGAINST DELETED / BROKEN SERVICES
+    const invalidItem = cartItems.find((item) => !item.service);
+    if (invalidItem) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Some services in your cart are no longer available. Please refresh your cart.",
+      });
+    }
+
+    // ✅ CALCULATE TOTAL
     let subTotal = 0;
     cartItems.forEach((item) => {
       subTotal += item.totalPrice * item.quantity;
@@ -135,8 +160,18 @@ exports.checkOut = async (req, res) => {
     const tax = subTotal * 0.18;
     const grandTotal = subTotal + tax;
 
-    const vendorId = cartItems[0].service.provider;
+    // ✅ SAFE VENDOR ID
+    const vendorId =
+      cartItems[0].service.provider?._id || cartItems[0].service.provider;
 
+    if (!vendorId) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor not found for this service",
+      });
+    }
+
+    // ✅ CREATE ORDER
     const order = await Order.create({
       customer: userId,
       vendor: vendorId,
@@ -158,12 +193,13 @@ exports.checkOut = async (req, res) => {
       status: "placed",
     });
 
+    // ✅ CREATE BOOKINGS
     const bookings = [];
     for (const item of cartItems) {
       const booking = await Booking.create({
         customer: userId,
         vendor: vendorId,
-        order: order._id, // ✅ LINK BOOKING TO ORDER
+        order: order._id,
         service: item.service._id,
         category: item.service.category,
         date: item.date,
@@ -179,18 +215,18 @@ exports.checkOut = async (req, res) => {
       bookings.push(booking);
     }
 
+    // ✅ CLEAR CART
     await Cart.deleteMany({ user: userId });
 
-    // 🔔 Realtime events
-    io.to("admin").emit("order:new", order);
-    io.to(`vendor:${vendorId}`).emit("booking:new", bookings);
-    io.to(`user:${userId}`).emit("order:update", order);
-
-    io.to(`vendor:${vendorId}`).emit("vendor:dashboard:update", {
+    // 🔔 REALTIME EVENTS (SAFE)
+    io?.to("admin").emit("order:new", order);
+    io?.to(`vendor:${vendorId}`).emit("booking:new", bookings);
+    io?.to(`user:${userId}`).emit("order:update", order);
+    io?.to(`vendor:${vendorId}`).emit("vendor:dashboard:update", {
       type: "new_booking",
     });
 
-    // 🔒 Escrow: hold full amount for online
+    // 🔒 ESCROW
     order.escrowAmount = paymentMethod === "COD" ? 0 : grandTotal;
     await order.save();
 
@@ -236,11 +272,13 @@ exports.checkOut = async (req, res) => {
       message: "Invalid payment method",
     });
   } catch (err) {
-    console.error("Checkout error:", err);
+    console.error("❌ Checkout error message:", err.message);
+    console.error("❌ Checkout error stack:", err.stack);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// ======================= COMPLETE BOOKING =======================
 exports.completeBooking = async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -253,7 +291,6 @@ exports.completeBooking = async (req, res) => {
         .json({ success: false, message: "Booking not found" });
     }
 
-    // ✅ If already completed, avoid double-processing
     if (booking.status === "completed") {
       return res.json({
         success: true,
@@ -266,7 +303,6 @@ exports.completeBooking = async (req, res) => {
     booking.paymentStatus = "paid";
     await booking.save();
 
-    // ✅ Fetch linked order safely
     const order = await Order.findById(booking.order);
     if (!order) {
       return res.status(404).json({
@@ -275,7 +311,7 @@ exports.completeBooking = async (req, res) => {
       });
     }
 
-    // ONLINE → release escrow (only once)
+    // ONLINE → release escrow
     if (booking.paymentMethod !== "COD") {
       const payment = await Payment.findOne({ order: order._id });
 
@@ -297,12 +333,11 @@ exports.completeBooking = async (req, res) => {
       );
     }
 
-    // 🔔 Realtime updates
-    io.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
-    io.to(`user:${booking.customer}`).emit("booking:update", booking);
-    io.to("admin").emit("booking:update", booking);
-
-    io.to(`vendor:${booking.vendor}`).emit("vendor:dashboard:update", {
+    // 🔔 REALTIME UPDATES (SAFE)
+    io?.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
+    io?.to(`user:${booking.customer}`).emit("booking:update", booking);
+    io?.to("admin").emit("booking:update", booking);
+    io?.to(`vendor:${booking.vendor}`).emit("vendor:dashboard:update", {
       type: "booking_completed",
     });
 
@@ -317,6 +352,7 @@ exports.completeBooking = async (req, res) => {
   }
 };
 
+// ======================= MARK ORDER PAID =======================
 exports.markOrderPaid = async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -332,12 +368,13 @@ exports.markOrderPaid = async (req, res) => {
     order.status = "confirmed";
     await order.save();
 
-    io.to("admin").emit("order:update", order);
-    io.to(`user:${order.customer}`).emit("order:update", order);
-    io.to(`vendor:${order.vendor}`).emit("order:update", order);
+    io?.to("admin").emit("order:update", order);
+    io?.to(`user:${order.customer}`).emit("order:update", order);
+    io?.to(`vendor:${order.vendor}`).emit("order:update", order);
 
     res.json({ success: true, data: order });
   } catch (err) {
+    console.error("Mark order paid error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
