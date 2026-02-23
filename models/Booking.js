@@ -15,17 +15,19 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // models/Booking.js (ADD)
 
+    // 🔗 Linked order
     order: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
       required: true,
     },
+
     category: {
       type: String, // e.g. "Cleaning", "Electrical"
       required: true,
     },
+
     // 🛠️ Which service
     service: {
       type: mongoose.Schema.Types.ObjectId,
@@ -43,12 +45,12 @@ const bookingSchema = new mongoose.Schema(
       type: String, // e.g. "10:00 AM"
     },
 
-    // 🧩 Customer selections (from your UI: bedrooms, type, frequency, etc.)
+    // 🧩 Customer selections
     selections: [
       {
-        label: String, // e.g. "Number of bedrooms"
-        value: String, // e.g. "3BHK+"
-        extraPrice: Number, // e.g. 1999
+        label: String,
+        value: String,
+        extraPrice: Number,
       },
     ],
 
@@ -68,13 +70,13 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
 
-    // 📦 Quantity (if you ever allow multiple)
+    // 📦 Quantity
     quantity: {
       type: Number,
       default: 1,
     },
 
-    // 📌 Booking status (matches your vendor UI)
+    // 📌 Booking status
     status: {
       type: String,
       enum: ["upcoming", "confirmed", "awaiting", "completed", "cancelled"],
@@ -82,9 +84,11 @@ const bookingSchema = new mongoose.Schema(
     },
 
     // 💳 Payment info
+    // ✅ FIX: Added "STRIPE" here
     paymentMethod: {
       type: String,
-      enum: ["UPI", "CARD", "NET_BANKING", "COD"],
+      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE"],
+      required: true,
     },
 
     paymentStatus: {
