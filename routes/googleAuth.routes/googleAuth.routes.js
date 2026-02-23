@@ -21,7 +21,7 @@ router.get(
   (req, res) => {
     const token = generateToken(req.user);
 
-    const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+    const FRONTEND_URL = process.env.FRONTEND_URL || "hirehand://auth";
 
     res.redirect(`${FRONTEND_URL}/google-success?token=${token}`);
   },

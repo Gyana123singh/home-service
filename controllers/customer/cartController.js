@@ -2,12 +2,14 @@ const Cart = require("../../models/Cart");
 const Service = require("../../models/AdminService");
 const Order = require("../../models/Order");
 const Booking = require("../../models/Booking");
+const Payment = require("../../models/Payment");
 const { calculateServicePrice } = require("../../utils/calculateServicePrice");
 const { creditVendor } = require("../../utils/walletService");
+const { createPhonePePayment } = require("../../utils/phonepe");
 
 exports.addServiceToCart = async (req, res) => {
   try {
-    const userId = req.user._id; // from auth middleware
+    const userId = req.user._id;
     const { serviceId, selections, date, quantity } = req.body;
 
     if (!serviceId || !Array.isArray(selections) || !date) {
@@ -19,13 +21,9 @@ exports.addServiceToCart = async (req, res) => {
 
     const service = await Service.findById(serviceId);
     if (!service) {
-      return res.status(404).json({
-        success: false,
-        message: "Service not found",
-      });
+      return res.status(404).json({ success: false, message: "Service not found" });
     }
 
-    // ✅ Validate: all requirements selected
     for (const reqField of service.requirements) {
       const found = selections.find((s) => s.label === reqField.label);
       if (!found) {
@@ -36,7 +34,6 @@ exports.addServiceToCart = async (req, res) => {
       }
     }
 
-    // 🧮 Calculate price securely
     const { basePrice, addonsPrice, totalPrice, breakdown } =
       calculateServicePrice(service, selections);
 
@@ -51,30 +48,18 @@ exports.addServiceToCart = async (req, res) => {
       quantity: quantity || 1,
     });
 
-    return res.json({
-      success: true,
-      message: "Added to cart",
-      data: cartItem,
-    });
+    return res.json({ success: true, message: "Added to cart", data: cartItem });
   } catch (err) {
     console.error("Add to cart error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 exports.getMyCart = async (req, res) => {
   try {
     const userId = req.user._id;
-
     const cartItems = await Cart.find({ user: userId }).populate("service");
-
-    res.json({
-      success: true,
-      data: cartItems,
-    });
+    res.json({ success: true, data: cartItems });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
@@ -93,23 +78,18 @@ exports.removeFromCart = async (req, res) => {
 exports.updateQuantity = async (req, res) => {
   try {
     const { quantity } = req.body;
-
     if (!quantity || quantity < 1) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Quantity must be at least 1" });
+      return res.status(400).json({ success: false, message: "Quantity must be at least 1" });
     }
 
     const item = await Cart.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
       { quantity },
-      { new: true },
+      { new: true }
     );
 
     if (!item) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Cart item not found" });
+      return res.status(404).json({ success: false, message: "Cart item not found" });
     }
 
     res.json({ success: true, data: item });
@@ -122,7 +102,6 @@ exports.updateQuantity = async (req, res) => {
 exports.checkOut = async (req, res) => {
   try {
     const io = req.app.get("io");
-
     const userId = req.user._id;
     const { paymentMethod, address } = req.body;
 
@@ -134,12 +113,10 @@ exports.checkOut = async (req, res) => {
     }
 
     const cartItems = await Cart.find({ user: userId }).populate("service");
-
     if (cartItems.length === 0) {
       return res.status(400).json({ success: false, message: "Cart is empty" });
     }
 
-    // 💰 Totals
     let subTotal = 0;
     cartItems.forEach((item) => {
       subTotal += item.totalPrice * item.quantity;
@@ -148,10 +125,8 @@ exports.checkOut = async (req, res) => {
     const tax = subTotal * 0.18;
     const grandTotal = subTotal + tax;
 
-    // ⚠️ Assume single vendor
     const vendorId = cartItems[0].service.provider;
 
-    // 🧾 Create Order (money held by platform if online)
     const order = await Order.create({
       customer: userId,
       vendor: vendorId,
@@ -166,14 +141,13 @@ exports.checkOut = async (req, res) => {
       })),
       address,
       paymentMethod,
-      paymentStatus: paymentMethod === "COD" ? "pending" : "paid",
+      paymentStatus: paymentMethod === "COD" ? "pending" : "pending",
       subTotal,
       tax,
       grandTotal,
       status: "placed",
     });
 
-    // 📅 Create Booking(s)
     const bookings = [];
     for (const item of cartItems) {
       const booking = await Booking.create({
@@ -189,23 +163,54 @@ exports.checkOut = async (req, res) => {
         quantity: item.quantity,
         status: "upcoming",
         paymentMethod,
-        paymentStatus: paymentMethod === "COD" ? "pending" : "paid", // paid but in escrow
+        paymentStatus: paymentMethod === "COD" ? "pending" : "pending",
       });
       bookings.push(booking);
     }
 
-    // 🧹 Clear cart
     await Cart.deleteMany({ user: userId });
 
-    // 🔔 Realtime
     io.to("admin").emit("order:new", order);
     io.to(`vendor:${vendorId}`).emit("booking:new", bookings);
     io.to(`user:${userId}`).emit("order:update", order);
 
+    // 🔒 Escrow: hold full amount for online
+    order.escrowAmount = paymentMethod === "COD" ? 0 : grandTotal;
+    await order.save();
+
+    // COD → finish
+    if (paymentMethod === "COD") {
+      return res.json({
+        success: true,
+        message: "Order placed with COD",
+        data: { order, bookings },
+      });
+    }
+
+    // Create Payment
+    const merchantTransactionId = "TXN_" + Date.now();
+
+    await Payment.create({
+      order: order._id,
+      customer: userId,
+      vendor: vendorId,
+      amount: grandTotal,
+      method: paymentMethod,
+      status: "initiated",
+      gateway: "phonepe",
+      phonepeMerchantTransactionId: merchantTransactionId,
+    });
+
+    const phonepeRes = await createPhonePePayment({
+      amount: grandTotal,
+      merchantTransactionId,
+      userId,
+    });
+
     return res.json({
       success: true,
-      message: "Order placed successfully",
-      data: { order, bookings },
+      message: "Redirect to PhonePe",
+      paymentUrl: phonepeRes.data.instrumentResponse.redirectInfo.url,
     });
   } catch (err) {
     console.error("Checkout error:", err);
@@ -220,33 +225,38 @@ exports.completeBooking = async (req, res) => {
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Booking not found" });
+      return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
     booking.status = "completed";
 
-    // If COD, mark paid now (customer paid vendor offline)
     if (booking.paymentMethod === "COD") {
       booking.paymentStatus = "paid";
     }
 
     await booking.save();
 
-    // 💸 Release payment to vendor for ONLINE payments
-    if (booking.paymentMethod !== "COD") {
-      await creditVendor(booking.vendor, booking.totalPrice);
-    }
-
-    // 🔍 Find related order
     const order = await Order.findOne({
       customer: booking.customer,
       vendor: booking.vendor,
-      "items.service": booking.service,
     });
 
-    // If all bookings done → mark order completed
+    // ONLINE → release full escrow
+    if (booking.paymentMethod !== "COD" && order) {
+      const payment = await Payment.findOne({ order: order._id });
+      if (payment && payment.status === "held") {
+        await creditVendor(order.vendor, order.escrowAmount);
+        payment.status = "released";
+        payment.releasedAt = new Date();
+        await payment.save();
+      }
+    }
+
+    // COD → credit full amount
+    if (booking.paymentMethod === "COD" && order) {
+      await creditVendor(order.vendor, order.grandTotal);
+    }
+
     const pending = await Booking.find({
       customer: booking.customer,
       vendor: booking.vendor,
@@ -262,7 +272,6 @@ exports.completeBooking = async (req, res) => {
       io.to(`vendor:${order.vendor}`).emit("order:update", order);
     }
 
-    // 🔔 Realtime booking update
     io.to("admin").emit("booking:update", booking);
     io.to(`user:${booking.customer}`).emit("booking:update", booking);
     io.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
@@ -284,16 +293,13 @@ exports.markOrderPaid = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
 
     order.paymentStatus = "paid";
     order.status = "confirmed";
     await order.save();
 
-    // 🔔 Realtime
     io.to("admin").emit("order:update", order);
     io.to(`user:${order.customer}`).emit("order:update", order);
     io.to(`vendor:${order.vendor}`).emit("order:update", order);

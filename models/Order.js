@@ -2,8 +2,16 @@ const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema(
   {
-    customer: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    vendor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    vendor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
 
     items: [
       {
@@ -51,8 +59,11 @@ const orderSchema = new mongoose.Schema(
       enum: ["placed", "confirmed", "completed", "cancelled"],
       default: "placed",
     },
+    escrowAmount: { type: Number, default: 0 },
+    paymentGateway: { type: String, default: "phonepe" },
+    transactionId: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Order", orderSchema);

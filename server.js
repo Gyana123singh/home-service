@@ -12,6 +12,7 @@ const vendorRouter = require("./routes/vendorRoutes/index");
 const customerRouter = require("./routes/customerRoutes/index");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
 const otpRoutes = require("./routes/otpAuth.routes/otpAuth.routes");
+const paymentRoutes = require("./routes/customerRoutes/paymentRoutes");
 
 // for Admins router
 const vendorApprovalRoutes = require("./routes/adminRoutes/vendorApprovalRoutes");
@@ -38,6 +39,7 @@ app.use("/api/vendor", vendorRouter);
 app.use("/api/customer", customerRouter);
 app.use("/api/googleAuth", googleAuthRoutes);
 app.use("/api/otpAuth", otpRoutes);
+app.use("/api/customer/payment", paymentRoutes);
 
 // admin routes
 app.use("/api/admin/approval", vendorApprovalRoutes);
