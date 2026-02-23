@@ -1,3 +1,4 @@
+// models/Payment.js
 const mongoose = require("mongoose");
 
 const paymentSchema = new mongoose.Schema(
@@ -10,7 +11,7 @@ const paymentSchema = new mongoose.Schema(
 
     method: {
       type: String,
-      enum: ["UPI", "CARD", "NET_BANKING", "COD"],
+      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE"],
       required: true,
     },
 
@@ -20,9 +21,10 @@ const paymentSchema = new mongoose.Schema(
       default: "initiated",
     },
 
-    gateway: { type: String, default: "phonepe" },
-    transactionId: String,
-    phonepeMerchantTransactionId: String,
+    gateway: { type: String, default: "stripe" },
+
+    stripePaymentIntentId: String,
+    stripeSessionId: String,
 
     releasedAt: Date,
   },

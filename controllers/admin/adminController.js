@@ -55,9 +55,36 @@ exports.getPendingVendors = async (req, res) => {
   res.json({ success: true, vendors });
 };
 
+/**
+ * =========================
+ * ADMIN: APPROVE VENDOR
+ * =========================
+ */
 exports.approveVendor = async (req, res) => {
   const vendor = await User.findById(req.params.id);
+
+  if (!vendor || vendor.role !== "vendor") {
+    return res.status(404).json({ message: "Vendor not found" });
+  }
+
   vendor.vendorStatus = "approved";
   await vendor.save();
-  res.json({ success: true });
+
+  return res.json({ success: true, message: "Vendor approved" });
+};
+
+
+/**
+ * =========================
+ * ADMIN: GET PENDING VENDORS
+ * =========================
+ */
+exports.getPendingVendors = async (req, res) => {
+  const vendors = await User.find({
+    role: "vendor",
+    vendorStatus: "pending",
+    vendorOnboardingStep: "completed",
+  }).select("-password");
+
+  return res.json({ success: true, data: vendors });
 };

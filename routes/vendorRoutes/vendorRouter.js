@@ -10,20 +10,19 @@ const {
   setActiveCategory,
   getVendorDashboard,
   getVendorProfile,
-  getMyBookings,
-  getMyWallet,
+  getMyCategories,
 } = require("../../controllers/vendor/vendorController");
 
 const { protect } = require("../../middleware/auth.middleware");
 const { isVendor } = require("../../middleware/role.middleware");
 
-// ✅ Dedicated multer for vendor onboarding
+// ✅ Dedicated multer for vendor onboarding uploads
 const vendorOnboardingMulter = require("../../middleware/providerMulter");
 
 // =========================
 // AUTH
 // =========================
-router.post("/register", registerVendor); // 🔥 No file upload here
+router.post("/register", registerVendor);
 router.post("/login", vendorLogin);
 
 // =========================
@@ -46,16 +45,22 @@ router.post(
 );
 
 // =========================
-// VENDOR DASHBOARD
+// PROFILE & SETTINGS
 // =========================
-router.get("/get-profile", protect, isVendor, getVendorProfile);
+router.get("/profile", protect, isVendor, getVendorProfile);
 
+// Set vendor categories (from admin categories)
 router.post("/set-categories", protect, isVendor, setVendorCategories);
+
+// Change active category
 router.post("/set-active-category", protect, isVendor, setActiveCategory);
 
+// Get my categories + active category
+router.get("/my-categories", protect, isVendor, getMyCategories);
+
+// =========================
+// DASHBOARD
+// =========================
 router.get("/dashboard", protect, isVendor, getVendorDashboard);
-router.get("/bookings", protect, isVendor, getMyBookings);
-router.get("/bookings", protect, isVendor, getMyBookings);
-router.get("/wallet", protect, isVendor, getMyWallet);
 
 module.exports = router;

@@ -5,14 +5,14 @@ const http = require("http");
 const connectDB = require("./config/dbConnection");
 require("dotenv").config();
 
-const { initSocket } = require("./sockets/socket"); // 👈 import socket init
+const { initSocket } = require("./sockets/socket"); // 👈 socket init
 
 const adminRouter = require("./routes/adminRoutes/index");
 const vendorRouter = require("./routes/vendorRoutes/index");
 const customerRouter = require("./routes/customerRoutes/index");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
 const otpRoutes = require("./routes/otpAuth.routes/otpAuthRoutes");
-const paymentRoutes = require("./routes/customerRoutes/paymentRoutes");
+const stripeWebhookRoutes = require("./routes/customerRoutes/stripeWebhook"); // 👈 Stripe webhook
 
 // for Admins router
 const vendorApprovalRoutes = require("./routes/adminRoutes/vendorApprovalRoutes");
@@ -23,9 +23,14 @@ const sliderRouter = require("./routes/adminRoutes/sliderRoutes");
 
 const app = express();
 
+// ================== STRIPE WEBHOOK (MUST BE FIRST) ==================
+// ❗ IMPORTANT: This must come BEFORE express.json()
+app.use("/api/customer/payment", stripeWebhookRoutes);
+
+// ================== MIDDLEWARES ==================
 app.use(cors());
-app.use(express.json());
 app.use(morgan("dev"));
+app.use(express.json()); // after webhook
 
 connectDB();
 
@@ -39,7 +44,6 @@ app.use("/api/vendor", vendorRouter);
 app.use("/api/customer", customerRouter);
 app.use("/api/googleAuth", googleAuthRoutes);
 app.use("/api/otp/auth", otpRoutes);
-app.use("/api/customer/payment", paymentRoutes);
 
 // admin routes
 app.use("/api/admin/approval", vendorApprovalRoutes);
@@ -57,10 +61,10 @@ app.get("/", (req, res) => {
 
 const server = http.createServer(app);
 
-// 🔌 Initialize Socket.IO with CORS from HERE
+// 🔌 Initialize Socket.IO
 initSocket(server, app, {
   cors: {
-    origin: process.env.SOCKET_ORIGIN || "*", // e.g. http://localhost:3000
+    origin: process.env.SOCKET_ORIGIN || "*",
     methods: ["GET", "POST"],
   },
 });

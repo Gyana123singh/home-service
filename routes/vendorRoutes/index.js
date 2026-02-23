@@ -3,17 +3,12 @@ const router = express.Router();
 
 // Import all admin routes
 const vendorRoutes = require("./vendorRouter");
-const vendorKycRoutes = require("./vendorKycRoutes");
 const withdrawRoutes = require("./withdrawRoutes");
-
-// const vendorServiceRoutes = require("./vendorServiceRoutes");
-// const vendorBookingRoutes = require("./vendorBookingRoutes");
+const vendorBookingRoutes = require("./bookingRoutes");
 
 // Mount routes
 router.use("/", vendorRoutes);
-router.use("/categories", vendorKycRoutes);
-router.use("/wallet", withdrawRoutes);
-// router.use("/service", vendorServiceRoutes);
-// router.use("/booking", vendorBookingRoutes);
+router.use("/booking", vendorBookingRoutes);
+router.use("/withdraw", withdrawRoutes);
 
 module.exports = router;

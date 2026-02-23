@@ -17,6 +17,11 @@ const bookingSchema = new mongoose.Schema(
     },
     // models/Booking.js (ADD)
 
+    order: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      required: true,
+    },
     category: {
       type: String, // e.g. "Cleaning", "Electrical"
       required: true,

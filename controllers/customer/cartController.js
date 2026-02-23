@@ -5,7 +5,7 @@ const Booking = require("../../models/Booking");
 const Payment = require("../../models/Payment");
 const { calculateServicePrice } = require("../../utils/calculateServicePrice");
 const { creditVendor } = require("../../utils/walletService");
-const { createPhonePePayment } = require("../../utils/phonepe");
+const { createStripeCheckoutSession } = require("../../utils/stripe");
 
 exports.addServiceToCart = async (req, res) => {
   try {
@@ -21,7 +21,9 @@ exports.addServiceToCart = async (req, res) => {
 
     const service = await Service.findById(serviceId);
     if (!service) {
-      return res.status(404).json({ success: false, message: "Service not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Service not found" });
     }
 
     for (const reqField of service.requirements) {
@@ -48,7 +50,11 @@ exports.addServiceToCart = async (req, res) => {
       quantity: quantity || 1,
     });
 
-    return res.json({ success: true, message: "Added to cart", data: cartItem });
+    return res.json({
+      success: true,
+      message: "Added to cart",
+      data: cartItem,
+    });
   } catch (err) {
     console.error("Add to cart error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -79,17 +85,21 @@ exports.updateQuantity = async (req, res) => {
   try {
     const { quantity } = req.body;
     if (!quantity || quantity < 1) {
-      return res.status(400).json({ success: false, message: "Quantity must be at least 1" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Quantity must be at least 1" });
     }
 
     const item = await Cart.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
       { quantity },
-      { new: true }
+      { new: true },
     );
 
     if (!item) {
-      return res.status(404).json({ success: false, message: "Cart item not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Cart item not found" });
     }
 
     res.json({ success: true, data: item });
@@ -141,7 +151,7 @@ exports.checkOut = async (req, res) => {
       })),
       address,
       paymentMethod,
-      paymentStatus: paymentMethod === "COD" ? "pending" : "pending",
+      paymentStatus: "pending",
       subTotal,
       tax,
       grandTotal,
@@ -153,6 +163,7 @@ exports.checkOut = async (req, res) => {
       const booking = await Booking.create({
         customer: userId,
         vendor: vendorId,
+        order: order._id, // ✅ LINK BOOKING TO ORDER
         service: item.service._id,
         category: item.service.category,
         date: item.date,
@@ -163,22 +174,27 @@ exports.checkOut = async (req, res) => {
         quantity: item.quantity,
         status: "upcoming",
         paymentMethod,
-        paymentStatus: paymentMethod === "COD" ? "pending" : "pending",
+        paymentStatus: "pending",
       });
       bookings.push(booking);
     }
 
     await Cart.deleteMany({ user: userId });
 
+    // 🔔 Realtime events
     io.to("admin").emit("order:new", order);
     io.to(`vendor:${vendorId}`).emit("booking:new", bookings);
     io.to(`user:${userId}`).emit("order:update", order);
+
+    io.to(`vendor:${vendorId}`).emit("vendor:dashboard:update", {
+      type: "new_booking",
+    });
 
     // 🔒 Escrow: hold full amount for online
     order.escrowAmount = paymentMethod === "COD" ? 0 : grandTotal;
     await order.save();
 
-    // COD → finish
+    // ✅ COD FLOW
     if (paymentMethod === "COD") {
       return res.json({
         success: true,
@@ -187,30 +203,37 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // Create Payment
-    const merchantTransactionId = "TXN_" + Date.now();
+    // ✅ STRIPE FLOW
+    if (paymentMethod === "STRIPE") {
+      const payment = await Payment.create({
+        order: order._id,
+        customer: userId,
+        vendor: vendorId,
+        amount: grandTotal,
+        method: "STRIPE",
+        status: "initiated",
+        gateway: "stripe",
+      });
 
-    await Payment.create({
-      order: order._id,
-      customer: userId,
-      vendor: vendorId,
-      amount: grandTotal,
-      method: paymentMethod,
-      status: "initiated",
-      gateway: "phonepe",
-      phonepeMerchantTransactionId: merchantTransactionId,
-    });
+      const session = await createStripeCheckoutSession({
+        amount: grandTotal,
+        orderId: order._id,
+        userId,
+      });
 
-    const phonepeRes = await createPhonePePayment({
-      amount: grandTotal,
-      merchantTransactionId,
-      userId,
-    });
+      payment.stripeSessionId = session.id;
+      await payment.save();
 
-    return res.json({
-      success: true,
-      message: "Redirect to PhonePe",
-      paymentUrl: phonepeRes.data.instrumentResponse.redirectInfo.url,
+      return res.json({
+        success: true,
+        message: "Redirect to Stripe",
+        paymentUrl: session.url,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: "Invalid payment method",
     });
   } catch (err) {
     console.error("Checkout error:", err);
@@ -225,60 +248,67 @@ exports.completeBooking = async (req, res) => {
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+    }
+
+    // ✅ If already completed, avoid double-processing
+    if (booking.status === "completed") {
+      return res.json({
+        success: true,
+        message: "Booking already completed",
+        data: booking,
+      });
     }
 
     booking.status = "completed";
-
-    if (booking.paymentMethod === "COD") {
-      booking.paymentStatus = "paid";
-    }
-
+    booking.paymentStatus = "paid";
     await booking.save();
 
-    const order = await Order.findOne({
-      customer: booking.customer,
-      vendor: booking.vendor,
-    });
+    // ✅ Fetch linked order safely
+    const order = await Order.findById(booking.order);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Linked order not found for this booking",
+      });
+    }
 
-    // ONLINE → release full escrow
-    if (booking.paymentMethod !== "COD" && order) {
+    // ONLINE → release escrow (only once)
+    if (booking.paymentMethod !== "COD") {
       const payment = await Payment.findOne({ order: order._id });
+
       if (payment && payment.status === "held") {
-        await creditVendor(order.vendor, order.escrowAmount);
+        await creditVendor(order.vendor, order.escrowAmount, io);
+
         payment.status = "released";
         payment.releasedAt = new Date();
         await payment.save();
       }
     }
 
-    // COD → credit full amount
-    if (booking.paymentMethod === "COD" && order) {
-      await creditVendor(order.vendor, order.grandTotal);
+    // COD → credit directly
+    if (booking.paymentMethod === "COD") {
+      await creditVendor(
+        order.vendor,
+        booking.totalPrice * booking.quantity,
+        io,
+      );
     }
 
-    const pending = await Booking.find({
-      customer: booking.customer,
-      vendor: booking.vendor,
-      status: { $ne: "completed" },
-    });
-
-    if (pending.length === 0 && order) {
-      order.status = "completed";
-      await order.save();
-
-      io.to("admin").emit("order:update", order);
-      io.to(`user:${order.customer}`).emit("order:update", order);
-      io.to(`vendor:${order.vendor}`).emit("order:update", order);
-    }
-
-    io.to("admin").emit("booking:update", booking);
-    io.to(`user:${booking.customer}`).emit("booking:update", booking);
+    // 🔔 Realtime updates
     io.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
+    io.to(`user:${booking.customer}`).emit("booking:update", booking);
+    io.to("admin").emit("booking:update", booking);
+
+    io.to(`vendor:${booking.vendor}`).emit("vendor:dashboard:update", {
+      type: "booking_completed",
+    });
 
     return res.json({
       success: true,
-      message: "Booking completed and payment released",
+      message: "Booking completed & payment credited",
       data: booking,
     });
   } catch (err) {
@@ -293,7 +323,9 @@ exports.markOrderPaid = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     order.paymentStatus = "paid";
