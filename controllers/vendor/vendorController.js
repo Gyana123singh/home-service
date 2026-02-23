@@ -66,16 +66,20 @@ exports.registerVendor = async (req, res) => {
  */
 exports.vendorLogin = async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const { email, password } = req.body;
 
-    const vendor = await User.findOne({ phone, role: "vendor" }).select(
+    const vendor = await User.findOne({ email, role: "vendor" }).select(
       "+password",
     );
-    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
 
     const isMatch = await bcrypt.compare(password, vendor.password);
-    if (!isMatch)
+    if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     // If onboarding not completed
     if (vendor.vendorOnboardingStep !== "completed") {

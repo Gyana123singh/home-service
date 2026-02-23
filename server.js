@@ -11,7 +11,7 @@ const adminRouter = require("./routes/adminRoutes/index");
 const vendorRouter = require("./routes/vendorRoutes/index");
 const customerRouter = require("./routes/customerRoutes/index");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
-const otpRoutes = require("./routes/otpAuth.routes/otpAuth.routes");
+const otpRoutes = require("./routes/otpAuth.routes/otpAuthRoutes");
 const paymentRoutes = require("./routes/customerRoutes/paymentRoutes");
 
 // for Admins router
