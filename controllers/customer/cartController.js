@@ -6,6 +6,8 @@ const Payment = require("../../models/Payment");
 const { calculateServicePrice } = require("../../utils/calculateServicePrice");
 const { creditVendor } = require("../../utils/walletService");
 const { createStripeCheckoutSession } = require("../../utils/stripe");
+const Coupon = require("../../models/Coupon");
+const CouponUsage = require("../../models/CouponUsage");
 
 // ======================= ADD TO CART =======================
 exports.addServiceToCart = async (req, res) => {
@@ -115,6 +117,7 @@ exports.updateQuantity = async (req, res) => {
 };
 
 // ======================= CHECKOUT =======================
+// ======================= CHECKOUT =======================
 exports.checkOut = async (req, res) => {
   try {
     // 🔐 Guard: user must be authenticated
@@ -127,7 +130,7 @@ exports.checkOut = async (req, res) => {
 
     const io = req.app.get("io"); // may be undefined if socket not ready
     const userId = req.user._id;
-    const { paymentMethod, address } = req.body;
+    const { paymentMethod, address, couponCode } = req.body; // ✅ added couponCode
 
     if (!paymentMethod || !address) {
       return res.status(400).json({
@@ -159,14 +162,82 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // ✅ CALCULATE TOTAL
+    // ✅ CALCULATE SUBTOTAL
     let subTotal = 0;
     cartItems.forEach((item) => {
       subTotal += item.totalPrice * item.quantity;
     });
 
-    const tax = subTotal * 0.18;
-    const grandTotal = subTotal + tax;
+    // ======================= APPLY COUPON =======================
+    let discount = 0;
+    let appliedCoupon = null;
+
+    if (couponCode) {
+      const coupon = await Coupon.findOne({
+        code: couponCode.toUpperCase(),
+        isActive: true,
+      });
+
+      if (!coupon) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid coupon code" });
+      }
+
+      if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Coupon expired" });
+      }
+
+      if (subTotal < coupon.minOrderValue) {
+        return res.status(400).json({
+          success: false,
+          message: "Order amount too low for this coupon",
+        });
+      }
+
+      // Per-user limit check
+      const usedByUser = await CouponUsage.countDocuments({
+        user: userId,
+        coupon: coupon._id,
+      });
+
+      if (usedByUser >= coupon.perUserLimit) {
+        return res.status(400).json({
+          success: false,
+          message: "You have already used this coupon",
+        });
+      }
+
+      // First order only check
+      if (coupon.isFirstOrderOnly) {
+        const orderCount = await Order.countDocuments({ customer: userId });
+        if (orderCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "This coupon is only valid for first order",
+          });
+        }
+      }
+
+      // Calculate discount
+      if (coupon.discountType === "percentage") {
+        discount = (subTotal * coupon.discountValue) / 100;
+        if (coupon.maxDiscount) {
+          discount = Math.min(discount, coupon.maxDiscount);
+        }
+      } else {
+        discount = coupon.discountValue;
+      }
+
+      appliedCoupon = coupon;
+    }
+
+    // ======================= TOTALS =======================
+    const discountedSubTotal = Math.max(subTotal - discount, 0);
+    const tax = discountedSubTotal * 0.18;
+    const grandTotal = discountedSubTotal + tax;
 
     // 🛡️ Guard: total must be valid
     if (!grandTotal || isNaN(grandTotal) || grandTotal <= 0) {
@@ -187,7 +258,7 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // ✅ CREATE ORDER
+    // ======================= CREATE ORDER =======================
     const order = await Order.create({
       customer: userId,
       vendor: vendorId,
@@ -207,9 +278,22 @@ exports.checkOut = async (req, res) => {
       tax,
       grandTotal,
       status: "placed",
+      coupon: appliedCoupon ? { code: appliedCoupon.code, discount } : null, // ✅ save coupon info
     });
 
-    // ✅ CREATE BOOKINGS
+    // ======================= SAVE COUPON USAGE =======================
+    if (appliedCoupon) {
+      await CouponUsage.create({
+        user: userId,
+        coupon: appliedCoupon._id,
+        order: order._id,
+      });
+
+      appliedCoupon.usedCount += 1;
+      await appliedCoupon.save();
+    }
+
+    // ======================= CREATE BOOKINGS =======================
     const bookings = [];
     for (const item of cartItems) {
       const booking = await Booking.create({
@@ -246,7 +330,7 @@ exports.checkOut = async (req, res) => {
     order.escrowAmount = paymentMethod === "COD" ? 0 : grandTotal;
     await order.save();
 
-    // ✅ COD FLOW
+    // ======================= COD FLOW =======================
     if (paymentMethod === "COD") {
       return res.json({
         success: true,
@@ -255,7 +339,7 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // ✅ STRIPE FLOW
+    // ======================= STRIPE FLOW =======================
     if (paymentMethod === "STRIPE") {
       const payment = await Payment.create({
         order: order._id,

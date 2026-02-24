@@ -8,6 +8,7 @@ const vendorRoutes = require("./vendorApprovalRoutes");
 const sliderRoutes = require("./sliderRoutes");
 const providerRoutes = require("./providerRoutes");
 const withdrawRoutes = require("./withdrawRoutes");
+const couponRoutes = require("./couponRoutes");
 
 // Mount routes
 router.use("/login", adminRoutes);
@@ -17,5 +18,6 @@ router.use("/vendors", vendorRoutes);
 router.use("/sliders", sliderRoutes);
 router.use("/providers", providerRoutes);
 router.use("/wallet", withdrawRoutes);
+router.use("/coupons", couponRoutes);
 
 module.exports = router;

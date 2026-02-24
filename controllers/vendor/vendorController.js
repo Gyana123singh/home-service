@@ -117,6 +117,45 @@ exports.vendorLogin = async (req, res) => {
   }
 };
 
+exports.submitPersonalInfo = async (req, res) => {
+  try {
+    const vendor = await User.findById(req.user._id);
+
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    if (vendor.vendorOnboardingStep !== "info") {
+      return res.status(400).json({ message: "Info already submitted" });
+    }
+
+    const { fullName, email, phone, address } = req.body;
+
+    if (!fullName || !phone || !address) {
+      return res
+        .status(400)
+        .json({ message: "Full name, phone and address are required" });
+    }
+
+    const parts = fullName.trim().split(" ");
+    vendor.firstName = parts[0];
+    vendor.lastName = parts.slice(1).join(" ") || "";
+    if (email) vendor.email = email;
+    vendor.phone = phone;
+    vendor.address = address;
+
+    vendor.vendorOnboardingStep = "identity";
+    await vendor.save();
+
+    res.json({
+      success: true,
+      message: "Personal info saved",
+      nextStep: "identity",
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 /**
  * =========================
  * UPLOAD IDENTITY DOCS
@@ -130,8 +169,8 @@ exports.uploadIdentityDocs = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // Enforce step order
-    if (vendor.vendorOnboardingStep !== "info") {
+    // ✅ Enforce correct step: must be on "identity"
+    if (vendor.vendorOnboardingStep !== "identity") {
       return res.status(400).json({ message: "Complete previous step first" });
     }
 
@@ -158,7 +197,9 @@ exports.uploadIdentityDocs = async (req, res) => {
     await uploadIfExists("companyCertificate", "vendors/company");
 
     vendor.documents = documents;
-    vendor.vendorOnboardingStep = "identity";
+
+    // ✅ Move to next step
+    vendor.vendorOnboardingStep = "selfie";
     await vendor.save();
 
     return res.json({
@@ -184,8 +225,8 @@ exports.uploadSelfie = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // Enforce step order
-    if (vendor.vendorOnboardingStep !== "identity") {
+    // ✅ Enforce correct step: must be on "selfie"
+    if (vendor.vendorOnboardingStep !== "selfie") {
       return res
         .status(400)
         .json({ message: "Upload identity documents first" });
@@ -201,6 +242,8 @@ exports.uploadSelfie = async (req, res) => {
     );
 
     vendor.selfieImage = uploaded.secure_url;
+
+    // ✅ Finish onboarding
     vendor.vendorOnboardingStep = "completed";
     vendor.vendorStatus = "pending"; // waiting for admin
     await vendor.save();
@@ -340,7 +383,6 @@ exports.getMyCategories = async (req, res) => {
     activeCategory: vendor.activeCategory,
   });
 };
-
 
 // POST /api/vendor/register
 

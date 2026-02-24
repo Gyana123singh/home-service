@@ -11,6 +11,7 @@ const {
   getVendorDashboard,
   getVendorProfile,
   getMyCategories,
+  submitPersonalInfo,
 } = require("../../controllers/vendor/vendorController");
 
 const { protect } = require("../../middleware/auth.middleware");
@@ -24,6 +25,8 @@ const vendorOnboardingMulter = require("../../middleware/providerMulter");
 // =========================
 router.post("/register", registerVendor);
 router.post("/login", vendorLogin);
+
+router.post("/submit-personal-info", protect, isVendor, submitPersonalInfo);
 
 // =========================
 // ONBOARDING
