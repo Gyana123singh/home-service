@@ -384,20 +384,63 @@ exports.getMyCategories = async (req, res) => {
   });
 };
 
-// POST /api/vendor/register
+// =========================
+// GET VENDOR BASIC PROFILE (FOR EDIT SCREEN)
+// =========================
+exports.getVendorBasicProfile = async (req, res) => {
+  try {
+    const vendor = await User.findById(req.user._id).select(
+      "firstName lastName email phone"
+    );
 
-// POST /api/vendor/login
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
 
-// POST /api/vendor/onboarding/identity
+    return res.json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    console.error("GET VENDOR PROFILE ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
-// POST /api/vendor/onboarding/selfie
+// =========================
+// UPDATE VENDOR BASIC PROFILE (SAVE BUTTON)
+// =========================
+exports.updateVendorBasicProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone } = req.body;
 
-// GET /api/vendor/profile
+    const vendor = await User.findById(req.user._id);
 
-// POST /api/vendor/set-categories
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
 
-// POST /api/vendor/set-active-category
+    if (firstName !== undefined) vendor.firstName = firstName;
+    if (lastName !== undefined) vendor.lastName = lastName;
+    if (email !== undefined) vendor.email = email;
+    if (phone !== undefined) vendor.phone = phone;
 
-// GET /api/vendor/my-categories
+    await vendor.save();
 
-// GET /api/vendor/dashboard
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      data: {
+        firstName: vendor.firstName,
+        lastName: vendor.lastName,
+        email: vendor.email,
+        phone: vendor.phone,
+      },
+    });
+  } catch (error) {
+    console.error("UPDATE VENDOR PROFILE ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+

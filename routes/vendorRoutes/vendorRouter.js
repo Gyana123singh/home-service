@@ -12,6 +12,8 @@ const {
   getVendorProfile,
   getMyCategories,
   submitPersonalInfo,
+  getVendorBasicProfile,
+  updateVendorBasicProfile,
 } = require("../../controllers/vendor/vendorController");
 
 const { protect } = require("../../middleware/auth.middleware");
@@ -46,7 +48,6 @@ router.post(
   vendorOnboardingMulter,
   uploadSelfie,
 );
-
 // =========================
 // PROFILE & SETTINGS
 // =========================
@@ -66,4 +67,14 @@ router.get("/my-categories", protect, isVendor, getMyCategories);
 // =========================
 router.get("/dashboard", protect, isVendor, getVendorDashboard);
 
+// =========================
+// EDIT PROFILE (BASIC)
+// =========================
+router.get("/get-vendor-profile", protect, isVendor, getVendorBasicProfile);
+router.put(
+  "/update-vendor-profile",
+  protect,
+  isVendor,
+  updateVendorBasicProfile,
+);
 module.exports = router;
