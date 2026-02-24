@@ -9,10 +9,10 @@ const {
 } = require("../../controllers/admin/couponController");
 
 // add protect + admin middleware here
-router.post("/", createCoupon);
-router.get("/", getCoupons);
-router.put("/:id", updateCoupon);
+router.post("/create-coupon", createCoupon);
+router.get("/get-coupons", getCoupons);
+router.put("/update-coupon/:id", updateCoupon);
 router.patch("/:id/toggle", toggleCoupon);
-router.delete("/:id", deleteCoupon);
+router.delete("/delete-coupon/:id", deleteCoupon);
 
 module.exports = router;
