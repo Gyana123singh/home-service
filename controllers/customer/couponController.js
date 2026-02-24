@@ -10,3 +10,4 @@ exports.getAvailableCoupons = async (req, res) => {
 
   res.json({ success: true, data: coupons });
 };
+

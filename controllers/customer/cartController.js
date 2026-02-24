@@ -478,3 +478,106 @@ exports.markOrderPaid = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+// ======================= PREVIEW COUPON =======================
+exports.previewCoupon = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { couponCode } = req.body;
+
+    if (!couponCode) {
+      return res.status(400).json({ success: false, message: "Coupon code required" });
+    }
+
+    const cartItems = await Cart.find({ user: userId }).populate("service");
+
+    if (cartItems.length === 0) {
+      return res.status(400).json({ success: false, message: "Cart is empty" });
+    }
+
+    // Calculate subtotal
+    let subTotal = 0;
+    cartItems.forEach((item) => {
+      subTotal += item.totalPrice * item.quantity;
+    });
+
+    const coupon = await Coupon.findOne({
+      code: couponCode.toUpperCase(),
+      isActive: true,
+    });
+
+    if (!coupon) {
+      return res.status(400).json({ success: false, message: "Invalid coupon" });
+    }
+
+    if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+      return res.status(400).json({ success: false, message: "Coupon expired" });
+    }
+
+    if (subTotal < coupon.minOrderValue) {
+      return res.status(400).json({
+        success: false,
+        message: "Order amount too low for this coupon",
+      });
+    }
+
+    // Per-user limit
+    const usedByUser = await CouponUsage.countDocuments({
+      user: userId,
+      coupon: coupon._id,
+    });
+
+    if (usedByUser >= coupon.perUserLimit) {
+      return res.status(400).json({
+        success: false,
+        message: "You already used this coupon",
+      });
+    }
+
+    // First order check
+    if (coupon.isFirstOrderOnly) {
+      const orderCount = await Order.countDocuments({ customer: userId });
+      if (orderCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Only valid for first order",
+        });
+      }
+    }
+
+    // Calculate discount
+    let discount = 0;
+
+    if (coupon.discountType === "percentage") {
+      discount = (subTotal * coupon.discountValue) / 100;
+      if (coupon.maxDiscount) {
+        discount = Math.min(discount, coupon.maxDiscount);
+      }
+    } else {
+      discount = coupon.discountValue;
+    }
+
+    const discountedSubTotal = Math.max(subTotal - discount, 0);
+    const tax = discountedSubTotal * 0.18;
+    const grandTotal = discountedSubTotal + tax;
+
+    return res.json({
+      success: true,
+      data: {
+        coupon: {
+          code: coupon.code,
+          discountType: coupon.discountType,
+          discountValue: coupon.discountValue,
+        },
+        subTotal,
+        discount,
+        tax,
+        grandTotal,
+      },
+    });
+  } catch (err) {
+    console.error("Preview coupon error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
