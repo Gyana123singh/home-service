@@ -9,22 +9,13 @@ exports.getVendorBookings = async (req, res) => {
   try {
     const { status } = req.query;
 
-    const vendor = await User.findById(req.user._id);
-
-    if (!vendor) {
-      return res.status(404).json({ message: "Vendor not found" });
-    }
-
-    if (!vendor.activeCategory) {
-      return res.status(400).json({ message: "No active category selected" });
-    }
-
     const filter = {
-      vendor: vendor._id,
-      category: vendor.activeCategory,
+      vendor: req.user._id,
     };
 
-    if (status) filter.status = status;
+    if (status) {
+      filter.status = status;
+    }
 
     const bookings = await Booking.find(filter)
       .populate("customer", "firstName lastName phone")
@@ -33,7 +24,6 @@ exports.getVendorBookings = async (req, res) => {
 
     res.json({
       success: true,
-      activeCategory: vendor.activeCategory,
       data: bookings,
     });
   } catch (error) {
@@ -131,5 +121,79 @@ exports.getMyWallet = async (req, res) => {
   } catch (error) {
     console.error("GET MY WALLET ERROR:", error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ======================= COMPLETE BOOKING =======================
+exports.completeBooking = async (req, res) => {
+  try {
+    const io = req.app.get("io");
+    const bookingId = req.params.id;
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.status === "completed") {
+      return res.json({
+        success: true,
+        message: "Booking already completed",
+        data: booking,
+      });
+    }
+
+    booking.status = "completed";
+    booking.paymentStatus = "paid";
+    await booking.save();
+
+    const order = await Order.findById(booking.order);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Linked order not found for this booking",
+      });
+    }
+
+    // ONLINE → release escrow
+    if (booking.paymentMethod !== "COD") {
+      const payment = await Payment.findOne({ order: order._id });
+
+      if (payment && payment.status === "held") {
+        await creditVendor(order.vendor, order.escrowAmount, io);
+
+        payment.status = "released";
+        payment.releasedAt = new Date();
+        await payment.save();
+      }
+    }
+
+    // COD → credit directly
+    if (booking.paymentMethod === "COD") {
+      await creditVendor(
+        order.vendor,
+        booking.totalPrice * booking.quantity,
+        io,
+      );
+    }
+
+    // 🔔 REALTIME UPDATES (SAFE)
+    io?.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
+    io?.to(`user:${booking.customer}`).emit("booking:update", booking);
+    io?.to("admin").emit("booking:update", booking);
+    io?.to(`vendor:${booking.vendor}`).emit("vendor:dashboard:update", {
+      type: "booking_completed",
+    });
+
+    return res.json({
+      success: true,
+      message: "Booking completed & payment credited",
+      data: booking,
+    });
+  } catch (err) {
+    console.error("Complete booking error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

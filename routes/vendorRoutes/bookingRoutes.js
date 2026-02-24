@@ -11,7 +11,7 @@ const bookingController = require("../../controllers/vendor/bookingController");
 // =========================
 
 // GET /api/vendor/bookings?status=pending|confirmed|completed|cancelled
-router.get("/bookings", protect, isVendor, bookingController.getVendorBookings);
+router.get("/get-vendor-bookings", protect, isVendor, bookingController.getVendorBookings);
 
 // POST /api/vendor/bookings/:id/accept
 router.post(
@@ -36,22 +36,12 @@ router.post(
 // GET /api/vendor/wallet
 router.get("/wallet", protect, isVendor, bookingController.getMyWallet);
 
-// =========================
-// WITHDRAW
-// =========================
-
+// 👉 “Mark as Completed” / “Finish Job”
+router.post(
+  "/bookings/:id/complete",
+  protect,
+  isVendor,
+  bookingController.completeBooking,
+);
 
 module.exports = router;
-
-
-// GET /api/vendor/bookings?status=pending
-
-// POST /api/vendor/bookings/:id/accept
-
-// POST /api/vendor/bookings/:id/decline
-
-// GET /api/vendor/wallet
-
-// POST /api/vendor/withdraw/request
-
-// GET /api/vendor/withdraw/my-requests

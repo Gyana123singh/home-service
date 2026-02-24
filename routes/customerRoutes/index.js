@@ -6,6 +6,7 @@ const customerRoutes = require("./customerRouter");
 const sliderRoutes = require("./sliderRoutes");
 const serviceRoutes = require("./serviceRoutes");
 const couponRoutes = require("./couponRoutes");
+const bookingRoutes = require("./bookingRoutes");
 
 // Mount service routes
 router.use("/services", serviceRoutes);
@@ -17,5 +18,7 @@ router.use("/", customerRoutes);
 router.use("/cart", cartRoutes);
 router.use("/sliders", sliderRoutes);
 router.use("/coupons", couponRoutes);
+// Mount booking routes
+router.use("/bookings", bookingRoutes);
 
 module.exports = router;
