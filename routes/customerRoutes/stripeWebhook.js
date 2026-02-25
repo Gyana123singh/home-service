@@ -1,4 +1,3 @@
-// routes/customer/stripeWebhookRoutes.js
 const express = require("express");
 const router = express.Router();
 const bodyParser = require("body-parser");
@@ -7,6 +6,7 @@ const Payment = require("../../models/Payment");
 const Order = require("../../models/Order");
 const User = require("../../models/User");
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
+const SubscriptionPayment = require("../../models/SubscriptionPayment");
 const { getIO } = require("../../sockets/socket");
 
 router.post(
@@ -20,7 +20,7 @@ router.post(
       event = stripe.webhooks.constructEvent(
         req.body,
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET,
+        process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
       console.error("Webhook signature error:", err.message);
@@ -46,12 +46,9 @@ router.post(
             return res.json({ received: true });
           }
 
-          // 🛑 Idempotency guard: prevent double processing
+          // 🛑 Idempotency guard: prevent double subscription processing
           if (vendor.subscription?.stripeSessionId === session.id) {
-            console.log(
-              "⚠️ Subscription already processed for session:",
-              session.id,
-            );
+            console.log("⚠️ Subscription already processed for session:", session.id);
             return res.json({ received: true });
           }
 
@@ -84,11 +81,43 @@ router.post(
 
           await vendor.save();
 
-          console.log("✅ Vendor subscription activated/extended:", vendor._id);
+          // 💾 Save subscription payment (idempotent - prevent duplicates)
+          const existingPayment = await SubscriptionPayment.findOne({
+            stripeSessionId: session.id,
+          });
+
+          if (!existingPayment) {
+            await SubscriptionPayment.create({
+              vendor: vendor._id,
+              plan: plan._id,
+              amount: session.amount_total
+                ? session.amount_total / 100
+                : plan.price,
+              stripeSessionId: session.id,
+              stripePaymentIntentId: session.payment_intent,
+              status: "paid",
+            });
+          } else {
+            console.log("⚠️ Subscription payment already recorded for session:", session.id);
+          }
+
+          console.log("✅ Vendor subscription activated & payment saved:", vendor._id);
+
+          // 🔔 (Optional) Notify vendor in real-time
+          try {
+            const io = getIO();
+            io.to(`vendor:${vendor._id}`).emit("subscription:update", {
+              status: "active",
+              plan: plan.name,
+              endDate,
+            });
+          } catch (e) {
+            console.warn("Socket emit failed (non-fatal):", e.message);
+          }
         }
 
         // ================================
-        // 🛒 CASE 2: CUSTOMER ORDER (YOUR EXISTING LOGIC)
+        // 🛒 CASE 2: CUSTOMER ORDER (EXISTING LOGIC)
         // ================================
         else {
           const payment = await Payment.findOne({
@@ -121,7 +150,7 @@ router.post(
       console.error("STRIPE WEBHOOK HANDLER ERROR:", err);
       res.status(500).json({ error: "Webhook handler failed" });
     }
-  },
+  }
 );
 
 module.exports = router;

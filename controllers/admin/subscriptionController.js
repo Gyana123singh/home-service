@@ -1,4 +1,5 @@
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
+const SubscriptionPayment = require("../../models/SubscriptionPayment");
 
 // ➕ Create Plan
 exports.createPlan = async (req, res) => {
@@ -63,5 +64,22 @@ exports.deletePlan = async (req, res) => {
     res.json({ success: true, message: "Plan deleted" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+// controllers/admin/subscriptionPaymentController.js
+
+exports.getAllSubscriptionPayments = async (req, res) => {
+  try {
+    const payments = await SubscriptionPayment.find()
+      .populate("vendor", "name email")
+      .populate("plan", "name price")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: payments });
+  } catch (err) {
+    console.error("GET SUB PAYMENTS ERROR:", err);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load payments" });
   }
 };

@@ -1,6 +1,7 @@
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
 const User = require("../../models/User");
 const { stripe } = require("../../utils/stripe");
+const SubscriptionPayment = require("../../models/SubscriptionPayment");
 
 // 📄 Get active plans
 exports.getActivePlans = async (req, res) => {
@@ -83,5 +84,23 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to create checkout session" });
+  }
+};
+
+// controllers/vendor/subscriptionController.js
+
+exports.getMySubscriptionPayments = async (req, res) => {
+  try {
+    const payments = await SubscriptionPayment.find({
+      vendor: req.user._id,
+    })
+      .populate("plan", "name price")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: payments });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load payments" });
   }
 };
