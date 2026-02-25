@@ -11,7 +11,7 @@ const withdrawRoutes = require("./withdrawRoutes");
 const couponRoutes = require("./couponRoutes");
 
 // Mount routes
-router.use("/login", adminRoutes);
+router.use("/", adminRoutes);
 router.use("/services", serviceRoutes);
 router.use("/category", categoryRoutes);
 router.use("/vendors", vendorRoutes);

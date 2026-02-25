@@ -1,65 +1,114 @@
 const User = require("../../models/User");
-const KycAuditLog = require("../../models/VendorKycAuditLog");
 
-exports.approveRejectVendor = async (req, res) => {
+// =========================
+// GET ALL PENDING VENDORS
+// =========================
+exports.getPendingVendors = async (req, res) => {
+  try {
+    const vendors = await User.find({
+      role: "vendor",
+      vendorStatus: "pending",
+      vendorOnboardingStep: "completed",
+    }).select("-password +selfieImage"); // 👈 include image
+
+    return res.json({
+      success: true,
+      count: vendors.length,
+      data: vendors,
+    });
+  } catch (error) {
+    console.error("GET PENDING VENDORS ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =========================
+// APPROVE VENDOR
+// =========================
+exports.approveVendor = async (req, res) => {
   try {
     const { vendorId } = req.params;
-    const { action, reason } = req.body; // approve | reject
-
-    if (!["approve", "reject"].includes(action)) {
-      return res.status(400).json({ message: "Invalid action" });
-    }
 
     const vendor = await User.findById(vendorId);
 
     if (!vendor || vendor.role !== "vendor") {
-      return res.status(404).json({ message: "Vendor not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor not found" });
     }
 
-    vendor.vendorStatus = action === "approve" ? "approved" : "rejected";
+    if (vendor.vendorStatus === "approved") {
+      return res.status(400).json({ message: "Vendor already approved" });
+    }
+
+    vendor.vendorStatus = "approved";
     await vendor.save();
 
-    await KycAuditLog.create({
-      vendor: vendor._id,
-      action: action === "approve" ? "approved" : "rejected",
-      reason,
-      actionBy: req.user._id,
-    });
-
-    res.json({
+    return res.json({
       success: true,
-      message: `Vendor ${action}d successfully`,
+      message: "Vendor approved successfully",
+      vendorId: vendor._id,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("APPROVE VENDOR ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-//ADMIN VIEW KYC AUDIT LOGS
-exports.getVendorKycLogs = async (req, res) => {
+// =========================
+// REJECT VENDOR
+// =========================
+exports.rejectVendor = async (req, res) => {
   try {
     const { vendorId } = req.params;
+    const { reason } = req.body;
 
-    if (!vendorId) {
-      return res.status(400).json({
-        message: "Vendor ID is required",
-      });
+    const vendor = await User.findById(vendorId);
+
+    if (!vendor || vendor.role !== "vendor") {
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor not found" });
     }
 
-    const logs = await KycAuditLog.find({ vendor: vendorId })
-      .populate("actionBy", "firstName email role")
-      .sort({ createdAt: -1 });
+    vendor.vendorStatus = "rejected";
+    vendor.rejectionReason = reason || "Not specified";
+    await vendor.save();
 
-    return res.status(200).json({
+    return res.json({
       success: true,
-      count: logs.length,
-      data: logs,
+      message: "Vendor rejected",
+      vendorId: vendor._id,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch KYC audit logs",
-      error: error.message,
+    console.error("REJECT VENDOR ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =========================
+// GET ALL VENDORS (WITH FILTER)
+// =========================
+exports.getAllVendors = async (req, res) => {
+  try {
+    const { status } = req.query; // pending | approved | rejected | all
+
+    const filter = { role: "vendor" };
+
+    if (status && status !== "all") {
+      filter.vendorStatus = status;
+    }
+
+    const vendors = await User.find(filter)
+      .select("-password +selfieImage"); // 👈 include image
+
+    return res.json({
+      success: true,
+      count: vendors.length,
+      data: vendors,
     });
+  } catch (error) {
+    console.error("GET ALL VENDORS ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

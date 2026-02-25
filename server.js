@@ -14,12 +14,6 @@ const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes")
 const otpRoutes = require("./routes/otpAuth.routes/otpAuthRoutes");
 const stripeWebhookRoutes = require("./routes/customerRoutes/stripeWebhook"); // 👈 Stripe webhook
 
-// for Admins router
-const vendorApprovalRoutes = require("./routes/adminRoutes/vendorApprovalRoutes");
-const providerRoutes = require("./routes/adminRoutes/providerRoutes");
-const serviceRouter = require("./routes/adminRoutes/serviceRoutes");
-const serviceCateogoryRouter = require("./routes/adminRoutes/categoryRoutes");
-const sliderRouter = require("./routes/adminRoutes/sliderRoutes");
 
 const app = express();
 
@@ -45,12 +39,7 @@ app.use("/api/customer", customerRouter);
 app.use("/api/googleAuth", googleAuthRoutes);
 app.use("/api/otp/auth", otpRoutes);
 
-// admin routes
-app.use("/api/admin/approval", vendorApprovalRoutes);
-app.use("/api/admin/provider", providerRoutes);
-app.use("/api/admin/service", serviceRouter);
-app.use("/api/admin/service-category", serviceCateogoryRouter);
-app.use("/api/admin/slider", sliderRouter);
+
 
 // health check
 app.get("/", (req, res) => {

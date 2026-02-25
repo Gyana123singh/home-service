@@ -1,12 +1,16 @@
 const router = require("express").Router();
-const {
-  approveRejectVendor,
-  getVendorKycLogs,
-} = require("../../controllers/admin/vendorApprovalController");
-const { protect } = require("../../middleware/auth.middleware");
-const { isAdmin } = require("../../middleware/role.middleware");
+const vendorApprovalController = require("../../controllers/admin/vendorApprovalController");
 
-router.patch("/vendor/:vendorId/kyc", protect, isAdmin, approveRejectVendor); //API for Admin reject and approve to vendor' documents
-router.get("/vendor/:vendorId/kyc-logs", protect, isAdmin, getVendorKycLogs); //ADMIN VIEW KYC AUDIT LOGS of vendors
+// Get all vendors (with filter)
+router.get("/", vendorApprovalController.getAllVendors);
+
+// Get pending vendors
+router.get("/pending", vendorApprovalController.getPendingVendors);
+
+// Approve vendor
+router.put("/:vendorId/approve", vendorApprovalController.approveVendor);
+
+// Reject vendor
+router.put("/:vendorId/reject", vendorApprovalController.rejectVendor);
 
 module.exports = router;
