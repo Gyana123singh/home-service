@@ -157,7 +157,20 @@ const userSchema = new mongoose.Schema(
         ref: "AdminService",
       },
     ],
-
+    subscription: {
+      plan: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "SubscriptionPlan",
+      },
+      startDate: Date,
+      endDate: Date,
+      status: {
+        type: String,
+        enum: ["active", "expired", "none"],
+        default: "none",
+      },
+      stripeSessionId: String, // ✅ ADD THIS
+    },
     savedAddresses: [
       {
         label: { type: String, default: "Home" }, // Home, Office, etc

@@ -270,16 +270,36 @@ exports.uploadSelfie = async (req, res) => {
  * =========================
  */
 exports.getVendorProfile = async (req, res) => {
-  const vendor = await User.findById(req.user._id).select("-password");
+  try {
+    // ✅ Support both possible payload styles
+    const userId = req.user._id || req.user.id;
 
-  return res.json({
-    success: true,
-    data: {
-      vendorStatus: vendor.vendorStatus,
-      vendorOnboardingStep: vendor.vendorOnboardingStep,
-      vendor,
-    },
-  });
+    console.log("GET VENDOR PROFILE USER ID:", userId);
+
+    const vendor = await User.findById(userId).select("-password");
+
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        vendorStatus: vendor.vendorStatus,
+        vendorOnboardingStep: vendor.vendorOnboardingStep,
+        vendor,
+      },
+    });
+  } catch (error) {
+    console.error("GET VENDOR PROFILE ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
 };
 
 // controllers/vendor/vendorController.js

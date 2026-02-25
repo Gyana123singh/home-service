@@ -9,6 +9,9 @@ const sliderRoutes = require("./sliderRoutes");
 const providerRoutes = require("./providerRoutes");
 const withdrawRoutes = require("./withdrawRoutes");
 const couponRoutes = require("./couponRoutes");
+const subscriptionRoutes = require("./subscriptionRoutes");
+
+
 
 // Mount routes
 router.use("/", adminRoutes);
@@ -19,5 +22,6 @@ router.use("/sliders", sliderRoutes);
 router.use("/providers", providerRoutes);
 router.use("/wallet", withdrawRoutes);
 router.use("/coupons", couponRoutes);
+router.use("/subscription", subscriptionRoutes);
 
 module.exports = router;
