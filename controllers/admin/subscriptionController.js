@@ -85,7 +85,7 @@ exports.getAllSubscriptionPayments = async (req, res) => {
 };
 
 // POST /api/vendor/subscription/cancel
-exports.cancelMySubscription = async (req, res) => {
+exports.cancelSubscription = async (req, res) => {
   try {
     const vendor = await User.findById(req.user._id);
 
