@@ -62,8 +62,14 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
 
     console.log("👉 Using Stripe price:", plan.stripePriceId); // debug
 
+    const baseSuccess = process.env.FRONTEND_SUCCESS_URL; // e.g. hirehand://auth?result=success
+    const baseCancel = process.env.FRONTEND_CANCEL_URL;
+
+    // 🔧 If baseSuccess already has ?, append with &, else use ?
+    const joinChar = baseSuccess.includes("?") ? "&" : "?";
+
     const session = await stripe.checkout.sessions.create({
-      mode: "subscription", // ✅ MUST be subscription
+      mode: "subscription", // ✅ MUST be subscription for recurring price
       payment_method_types: ["card"],
       line_items: [
         {
@@ -76,13 +82,13 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
         vendorId: vendorId.toString(),
         planId: plan._id.toString(),
       },
-      success_url: `${process.env.FRONTEND_SUCCESS_URL}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: process.env.FRONTEND_CANCEL_URL,
+      success_url: `${baseSuccess}${joinChar}session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: baseCancel,
     });
 
     res.json({ success: true, url: session.url });
   } catch (err) {
-    console.error("❌ VENDOR SUB CHECKOUT ERROR FULL:", err); // log full error
+    console.error("❌ VENDOR SUB CHECKOUT ERROR FULL:", err);
     res
       .status(500)
       .json({ success: false, message: "Failed to create checkout session" });
