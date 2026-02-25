@@ -79,17 +79,23 @@ exports.vendorLogin = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // If onboarding not completed
+    // ✅ Always allow login and return token
+    vendor.password = undefined;
+
+    // 🟡 If onboarding not completed, send step info
     if (vendor.vendorOnboardingStep !== "completed") {
-      return res.status(403).json({
-        message: "Complete onboarding first",
+      return res.json({
+        success: true,
+        token: generateToken(vendor),
+        vendor,
+        status: "onboarding",
         step: vendor.vendorOnboardingStep, // info | identity | selfie
+        message: "Please complete onboarding",
       });
     }
 
-    // If admin not approved yet
+    // 🔵 If admin not approved yet
     if (vendor.vendorStatus === "pending") {
-      vendor.password = undefined;
       return res.json({
         success: true,
         token: generateToken(vendor),
@@ -99,13 +105,14 @@ exports.vendorLogin = async (req, res) => {
       });
     }
 
+    // 🔴 If rejected
     if (vendor.vendorStatus === "rejected") {
       return res.status(403).json({
         message: "Your account was rejected. Contact support.",
       });
     }
 
-    vendor.password = undefined;
+    // 🟢 Approved and completed
     return res.json({
       success: true,
       token: generateToken(vendor),
@@ -340,6 +347,14 @@ exports.setActiveCategory = async (req, res) => {
 exports.getVendorDashboard = async (req, res) => {
   const vendor = await User.findById(req.user._id);
 
+  // 🚫 Block if onboarding not completed
+  if (vendor.vendorOnboardingStep !== "completed") {
+    return res.status(403).json({
+      message: "Complete onboarding first",
+      step: vendor.vendorOnboardingStep,
+    });
+  }
+
   if (!vendor.activeCategory) {
     return res.status(400).json({ message: "No active category selected" });
   }
@@ -390,11 +405,13 @@ exports.getMyCategories = async (req, res) => {
 exports.getVendorBasicProfile = async (req, res) => {
   try {
     const vendor = await User.findById(req.user._id).select(
-      "firstName lastName email phone"
+      "firstName lastName email phone",
     );
 
     if (!vendor || vendor.role !== "vendor") {
-      return res.status(404).json({ success: false, message: "Vendor not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor not found" });
     }
 
     return res.json({
@@ -417,7 +434,9 @@ exports.updateVendorBasicProfile = async (req, res) => {
     const vendor = await User.findById(req.user._id);
 
     if (!vendor || vendor.role !== "vendor") {
-      return res.status(404).json({ success: false, message: "Vendor not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Vendor not found" });
     }
 
     if (firstName !== undefined) vendor.firstName = firstName;
@@ -442,5 +461,3 @@ exports.updateVendorBasicProfile = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-
