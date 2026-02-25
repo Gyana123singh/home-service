@@ -60,27 +60,29 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
         .json({ success: false, message: "Plan not found or inactive" });
     }
 
+    console.log("👉 Using Stripe price:", plan.stripePriceId); // debug
+
     const session = await stripe.checkout.sessions.create({
-      mode: "payment",
+      mode: "subscription", // ✅ MUST be subscription
       payment_method_types: ["card"],
       line_items: [
         {
-          price: plan.stripePriceId, // ✅ From Stripe dashboard
+          price: plan.stripePriceId, // must be price_... (recurring)
           quantity: 1,
         },
       ],
       metadata: {
-        type: "vendor_subscription", // ⭐ used by webhook
+        type: "vendor_subscription",
         vendorId: vendorId.toString(),
         planId: plan._id.toString(),
       },
-      success_url: process.env.FRONTEND_SUCCESS_URL,
+      success_url: `${process.env.FRONTEND_SUCCESS_URL}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: process.env.FRONTEND_CANCEL_URL,
     });
 
     res.json({ success: true, url: session.url });
   } catch (err) {
-    console.error("VENDOR SUB CHECKOUT ERROR:", err);
+    console.error("❌ VENDOR SUB CHECKOUT ERROR FULL:", err); // log full error
     res
       .status(500)
       .json({ success: false, message: "Failed to create checkout session" });
