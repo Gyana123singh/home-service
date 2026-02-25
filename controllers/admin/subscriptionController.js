@@ -83,3 +83,24 @@ exports.getAllSubscriptionPayments = async (req, res) => {
       .json({ success: false, message: "Failed to load payments" });
   }
 };
+
+// POST /api/vendor/subscription/cancel
+exports.cancelMySubscription = async (req, res) => {
+  try {
+    const vendor = await User.findById(req.user._id);
+
+    if (!vendor || !vendor.subscription) {
+      return res.json({ success: true, message: "No active subscription" });
+    }
+
+    vendor.subscription.status = "expired";
+    vendor.subscription.endDate = new Date();
+    await vendor.save();
+
+    res.json({ success: true, message: "Subscription cancelled" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to cancel subscription" });
+  }
+};

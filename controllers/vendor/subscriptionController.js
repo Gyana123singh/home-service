@@ -62,8 +62,13 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
 
     console.log("👉 Using Stripe price:", plan.stripePriceId); // debug
 
-    const baseSuccess = process.env.FRONTEND_SUCCESS_URL; // e.g. hirehand://auth?result=success
-    const baseCancel = process.env.FRONTEND_CANCEL_URL;
+    // ✅ USE VENDOR URLs (not customer ones)
+    const baseSuccess = process.env.VENDOR_SUCCESS_URL; // e.g. hirehandprovider://auth?result=success
+    const baseCancel = process.env.VENDOR_CANCEL_URL;
+
+    if (!baseSuccess || !baseCancel) {
+      throw new Error("VENDOR_SUCCESS_URL or VENDOR_CANCEL_URL is not set in .env");
+    }
 
     // 🔧 If baseSuccess already has ?, append with &, else use ?
     const joinChar = baseSuccess.includes("?") ? "&" : "?";
