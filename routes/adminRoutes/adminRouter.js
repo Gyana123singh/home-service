@@ -4,5 +4,6 @@ const { protect } = require("../../middleware/auth.middleware");
 const { isAdmin } = require("../../middleware/role.middleware");
 
 router.post("/login", adminController.adminLogin);
+router
 
 module.exports = router;

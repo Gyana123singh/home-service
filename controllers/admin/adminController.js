@@ -49,3 +49,26 @@ exports.adminLogin = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.getMyProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      data: user,
+    });
+  } catch (err) {
+    console.error("Get profile error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+

@@ -41,30 +41,18 @@ exports.getCategories = async (req, res) => {
 
 exports.getServicesByCategory = async (req, res) => {
   try {
-    let { categoryId } = req.params;
-
-    if (!categoryId) {
-      return res.status(400).json({
-        success: false,
-        message: "Category is required",
-      });
-    }
-
-    // normalize
-    categoryId = categoryId.toLowerCase().trim();
+    const category = req.params.categoryId.toLowerCase().trim();
 
     const services = await Service.find({
-      category: { $regex: `^${categoryId}$`, $options: "i" },
+      category: category,
       status: "active",
-      approvedByAdmin: true,
-    }).sort({ createdAt: -1 });
+    });
 
     return res.json({
       success: true,
       data: services,
     });
   } catch (error) {
-    console.error("GET SERVICES BY CATEGORY ERROR:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
