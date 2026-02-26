@@ -40,7 +40,7 @@ exports.getCategories = async (req, res) => {
 // =========================
 exports.createService = async (req, res) => {
   try {
-    const vendorId = req.user._id; // ✅ logged-in vendor
+    const vendorId = req.user._id;
 
     const {
       name,
@@ -66,7 +66,6 @@ exports.createService = async (req, res) => {
       });
     }
 
-    // 💰 Clean prices (remove $ if present)
     const cleanPrice = Number(String(price).replace("$", ""));
     const cleanDiscount = discountPrice
       ? Number(String(discountPrice).replace("$", ""))
@@ -79,7 +78,6 @@ exports.createService = async (req, res) => {
       });
     }
 
-    // 🧩 Parse requirements from Flutter UI
     const parsedRequirements = Array.isArray(requirements)
       ? requirements.map((r) => ({
           label: r.label,
@@ -91,43 +89,26 @@ exports.createService = async (req, res) => {
       : [];
 
     const service = await Service.create({
-      // BASIC
       title: name,
       slug: name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
       shortDescription: description.substring(0, 120),
-      description: description,
-      tags: [],
-
-      // RELATION
-      provider: vendorId, // ✅ VERY IMPORTANT (used for vendor bookings)
-
-      // CATEGORY / SECTION
+      description,
+      provider: vendorId,
       section,
       category,
       serviceMode,
-
-      // AVAILABILITY
       days: Array.isArray(days) ? days : [],
       startTime: startTime || "",
       endTime: endTime || "",
       address: address || "",
-
-      // PRICING
       price: cleanPrice,
       discountedPrice: cleanDiscount,
-
-      // REQUIREMENTS
       requirements: parsedRequirements,
-
-      // IMAGES
       images: {
         main: image || "",
         other: [],
         files: [],
       },
-
-      // FLAGS
-      approvedByAdmin: false, // admin can approve later
       status: isActive ? "active" : "inactive",
     });
 
