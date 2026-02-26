@@ -15,6 +15,7 @@ exports.createCategory = async (req, res) => {
       name,
       slug,
       addCategory,
+      subCategory, // 👈 added
       darkColor,
       lightColor,
       status,
@@ -66,11 +67,29 @@ exports.createCategory = async (req, res) => {
       metaImage = metaUpload.secure_url;
     }
 
+    // ✅ Parse subcategories from frontend
+    let parsedSubCategories = [];
+
+    if (subCategory) {
+      const subArray = JSON.parse(subCategory); // frontend sends JSON string
+
+      parsedSubCategories = subArray
+        .filter((sub) => sub && sub.trim() !== "")
+        .map((sub) => ({
+          name: sub,
+          slug: sub
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^\w-]+/g, ""),
+        }));
+    }
+
     // Save to DB
     const category = await ServiceCategory.create({
       name,
       slug,
       addCategory,
+      subCategory: parsedSubCategories, // 👈 store here
       darkColor,
       lightColor,
       status: status === "true" || status === true,
