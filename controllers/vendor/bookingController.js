@@ -10,25 +10,14 @@ const Wallet = require("../../models/Wallet");
 // =========================
 exports.getVendorBookings = async (req, res) => {
   try {
-    const { status } = req.query;
+    console.log("VENDOR ID:", req.user._id); // 👈 ADD THIS
 
-    const filter = {
-      vendor: req.user._id,
-    };
-
-    if (status) {
-      filter.status = status;
-    }
-
-    const bookings = await Booking.find(filter)
+    const bookings = await Booking.find({ vendor: req.user._id })
       .populate("customer", "firstName lastName phone")
       .populate("service", "title")
       .sort({ createdAt: -1 });
 
-    res.json({
-      success: true,
-      data: bookings,
-    });
+    res.json({ success: true, data: bookings });
   } catch (error) {
     console.error("GET VENDOR BOOKINGS ERROR:", error);
     res.status(500).json({ message: "Server error" });

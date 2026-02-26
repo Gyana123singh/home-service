@@ -6,12 +6,13 @@ const vendorRoutes = require("./vendorRouter");
 const withdrawRoutes = require("./withdrawRoutes");
 const vendorBookingRoutes = require("./bookingRoutes");
 const subscriptionRoutes = require("./subscriptionRoutes");
-
+const serviceRoutes = require("./serviceRouter");
 
 // Mount routes
 router.use("/", vendorRoutes);
 router.use("/booking", vendorBookingRoutes);
 router.use("/withdraw", withdrawRoutes);
 router.use("/subscription", subscriptionRoutes);
+router.use("/service", serviceRoutes);
 
 module.exports = router;

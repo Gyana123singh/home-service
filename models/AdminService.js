@@ -1,4 +1,3 @@
-// models/Service.js
 const mongoose = require("mongoose");
 
 const serviceSchema = new mongoose.Schema(
@@ -14,17 +13,40 @@ const serviceSchema = new mongoose.Schema(
     provider: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: true, // ✅ vendor who owns this service
     },
-    // category: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "ServiceCategory",
-    //   required: true,
-    // },
+
+    // CATEGORY / SECTION
+    section: {
+      type: String, // e.g. "Home", "Office"
+    },
 
     category: {
-      type: String, // e.g. "Painting"
+      type: String, // e.g. "Cleaning", "Painting"
       required: true,
+    },
+
+    serviceMode: {
+      type: String, // e.g. "Home", "On Demand"
+    },
+
+    // AVAILABILITY
+    days: [
+      {
+        type: String, // e.g. "Mon", "Tue"
+      },
+    ],
+
+    startTime: {
+      type: String, // store as "10:00 AM"
+    },
+
+    endTime: {
+      type: String, // store as "06:00 PM"
+    },
+
+    address: {
+      type: String,
     },
 
     // TASK DETAILS
@@ -45,10 +67,10 @@ const serviceSchema = new mongoose.Schema(
     // 🆕 SERVICE REQUIREMENTS (FROM UI)
     requirements: [
       {
-        label: { type: String, required: true }, // e.g. "Area size", "Paint type"
+        label: { type: String, required: true }, // e.g. "Area size"
         options: [
           {
-            label: { type: String, required: true }, // e.g. "1 Room", "Distemper"
+            label: { type: String, required: true }, // e.g. "1 Room"
             extraPrice: { type: Number, default: 0 }, // e.g. 300, 500
           },
         ],
@@ -87,7 +109,7 @@ const serviceSchema = new mongoose.Schema(
       metaImage: String,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("AdminService", serviceSchema);
