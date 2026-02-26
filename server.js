@@ -13,8 +13,8 @@ const customerRouter = require("./routes/customerRoutes/index");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
 const otpRoutes = require("./routes/otpAuth.routes/otpAuthRoutes");
 const stripeWebhookRoutes = require("./routes/customerRoutes/stripeWebhook"); // 👈 Stripe webhook
-
-
+const contactRoute = require("./routes/websiteRoutes/contactRoute"); // 👈 Contact form route
+const registerRoute = require("./routes/websiteRoutes/registerRoute"); // 👈 Registration form route
 const app = express();
 
 // ================== STRIPE WEBHOOK (MUST BE FIRST) ==================
@@ -38,8 +38,8 @@ app.use("/api/vendor", vendorRouter);
 app.use("/api/customer", customerRouter);
 app.use("/api/googleAuth", googleAuthRoutes);
 app.use("/api/otp/auth", otpRoutes);
-
-
+app.use("/api/contact", contactRoute);
+app.use("/api/register", registerRoute);
 
 // health check
 app.get("/", (req, res) => {

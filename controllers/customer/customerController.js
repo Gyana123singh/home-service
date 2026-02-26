@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const generateToken = require("../../utils/generateToken");
 const Slider = require("../../models/AdminSlider");
 const ServiceCategory = require("../../models/ServiceCategory");
+const { sendRegistrationMail } = require("../../service/mailService");
 
 // ================== REGISTER ==================
 exports.registerCustomer = async (req, res) => {
@@ -60,6 +61,17 @@ exports.registerCustomer = async (req, res) => {
       referralCode,
       role: "customer",
     });
+
+    // Send registration emails to both user and admin
+    try {
+      await sendRegistrationMail({
+        firstName,
+        lastName,
+        email,
+      });
+    } catch (mailError) {
+      console.error("Registration email failed:", mailError.message);
+    }
 
     res.status(201).json({
       success: true,
