@@ -11,7 +11,7 @@ const bookingController = require("../../controllers/vendor/bookingController");
 // =========================
 
 // GET /api/vendor/bookings?status=pending|confirmed|completed|cancelled
-router.get("/get-vendor-bookings", protect, isVendor, bookingController.getVendorBookings);
+router.get("/get-vendor-bookings",  bookingController.getVendorBookings);
 
 // POST /api/vendor/bookings/:id/accept
 router.post(

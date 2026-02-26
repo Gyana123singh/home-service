@@ -1,5 +1,8 @@
 const Booking = require("../../models/Booking");
 const User = require("../../models/User");
+const { creditVendor } = require("../../utils/walletService");
+const Order = require("../../models/Order");
+const Payment = require("../../models/Payment");
 const Wallet = require("../../models/Wallet");
 
 // =========================
@@ -130,7 +133,11 @@ exports.completeBooking = async (req, res) => {
     const io = req.app.get("io");
     const bookingId = req.params.id;
 
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      vendor: req.user._id,
+    });
+
     if (!booking) {
       return res
         .status(404)
@@ -179,7 +186,7 @@ exports.completeBooking = async (req, res) => {
       );
     }
 
-    // 🔔 REALTIME UPDATES (SAFE)
+    // 🔔 REALTIME UPDATES
     io?.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
     io?.to(`user:${booking.customer}`).emit("booking:update", booking);
     io?.to("admin").emit("booking:update", booking);

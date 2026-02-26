@@ -247,9 +247,10 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // ✅ SAFE VENDOR ID
+
+    // ✅ FIXED: SAFE VENDOR ID (use service.vendor)
     const vendorId =
-      cartItems[0].service.provider?._id || cartItems[0].service.provider;
+      cartItems[0].service.vendor?._id || cartItems[0].service.vendor;
 
     if (!vendorId) {
       return res.status(400).json({
@@ -378,7 +379,6 @@ exports.checkOut = async (req, res) => {
   }
 };
 
-
 // ======================= MARK ORDER PAID =======================
 exports.markOrderPaid = async (req, res) => {
   try {
@@ -406,7 +406,6 @@ exports.markOrderPaid = async (req, res) => {
   }
 };
 
-
 // ======================= PREVIEW COUPON =======================
 exports.previewCoupon = async (req, res) => {
   try {
@@ -414,7 +413,9 @@ exports.previewCoupon = async (req, res) => {
     const { couponCode } = req.body;
 
     if (!couponCode) {
-      return res.status(400).json({ success: false, message: "Coupon code required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Coupon code required" });
     }
 
     const cartItems = await Cart.find({ user: userId }).populate("service");
@@ -435,11 +436,15 @@ exports.previewCoupon = async (req, res) => {
     });
 
     if (!coupon) {
-      return res.status(400).json({ success: false, message: "Invalid coupon" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid coupon" });
     }
 
     if (coupon.expiresAt && coupon.expiresAt < new Date()) {
-      return res.status(400).json({ success: false, message: "Coupon expired" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Coupon expired" });
     }
 
     if (subTotal < coupon.minOrderValue) {
