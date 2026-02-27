@@ -40,7 +40,11 @@ const serviceSchema = new mongoose.Schema(
     startTime: {
       type: String, // store as "10:00 AM"
     },
-
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Both"],
+      default: null,
+    },
     endTime: {
       type: String, // store as "06:00 PM"
     },
@@ -109,7 +113,7 @@ const serviceSchema = new mongoose.Schema(
       metaImage: String,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("AdminService", serviceSchema);

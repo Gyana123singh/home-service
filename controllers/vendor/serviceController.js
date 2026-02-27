@@ -57,8 +57,10 @@ exports.createService = async (req, res) => {
       requirements,
       isActive,
       image,
+      gender, // ✅ ADDED
     } = req.body;
 
+    // ================= VALIDATION =================
     if (!name || !description || !category || !price) {
       return res.status(400).json({
         success: false,
@@ -78,6 +80,7 @@ exports.createService = async (req, res) => {
       });
     }
 
+    // ================= REQUIREMENTS FORMAT =================
     const parsedRequirements = Array.isArray(requirements)
       ? requirements.map((r) => ({
           label: r.label,
@@ -88,6 +91,21 @@ exports.createService = async (req, res) => {
         }))
       : [];
 
+    // ================= GENDER VALIDATION =================
+    let allowedGender = null;
+
+    if (gender) {
+      const validGenders = ["Male", "Female", "Both"];
+      if (!validGenders.includes(gender)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid gender value",
+        });
+      }
+      allowedGender = gender;
+    }
+
+    // ================= CREATE SERVICE =================
     const service = await Service.create({
       title: name,
       slug: name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
@@ -97,6 +115,7 @@ exports.createService = async (req, res) => {
       section,
       category,
       serviceMode,
+      gender: allowedGender, // ✅ SAVED HERE
       days: Array.isArray(days) ? days : [],
       startTime: startTime || "",
       endTime: endTime || "",
