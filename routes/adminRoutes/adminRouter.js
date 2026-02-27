@@ -4,6 +4,6 @@ const { protect } = require("../../middleware/auth.middleware");
 const { isAdmin } = require("../../middleware/role.middleware");
 
 router.post("/login", adminController.adminLogin);
-router
+router.get("/profile", protect, isAdmin, adminController.getMyProfile);
 
 module.exports = router;
