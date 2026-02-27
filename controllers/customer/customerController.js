@@ -66,8 +66,7 @@ exports.registerCustomer = async (req, res) => {
         });
       }
 
-      // ✅ Prevent self-referral
-      if (referredByUser.email === email) {
+      if (referredByUser._id.toString() === exists?._id?.toString()) {
         return res.status(400).json({
           success: false,
           message: "You cannot use your own referral code",
