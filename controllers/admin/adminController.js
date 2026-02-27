@@ -50,25 +50,35 @@ exports.adminLogin = async (req, res) => {
   }
 };
 
-exports.getMyProfile = async (req, res) => {
+// ✅ Get Only Customers
+exports.getAllCustomers = async (req, res) => {
   try {
-    const userId = req.user._id;
-
-    const user = await User.findById(userId).select("-password");
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
+    const customers = await User.find({ role: "customer" }) // 🔥 IMPORTANT
+      .select("-password")
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
-      data: user,
+      data: customers,
     });
-  } catch (err) {
-    console.error("Get profile error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("Get customers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
+exports.deleteCustomer = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
 
+    res.json({
+      success: true,
+      message: "Customer deleted successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

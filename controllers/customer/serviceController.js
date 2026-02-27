@@ -1,5 +1,9 @@
 const Service = require("../../models/AdminService");
 const ServiceCategory = require("../../models/ServiceCategory");
+const {
+  getActiveGlobalOffer,
+  applyGlobalDiscount,
+} = require("../../utils/globalOfferService");
 
 // GET /api/services/by-category/:categoryId
 // GET /api/services/by-category/:categoryName
@@ -44,15 +48,24 @@ exports.getServicesByCategory = async (req, res) => {
     const category = req.params.categoryId.toLowerCase().trim();
 
     const services = await Service.find({
-      category: category,
+      category,
       status: "active",
     });
 
+    const formatted = services.map((service) => ({
+      ...service._doc,
+      originalPrice: service.price,
+      discountAmount: 0,
+      finalPrice: service.price,
+      offerApplied: false,
+    }));
+
     return res.json({
       success: true,
-      data: services,
+      data: formatted,
     });
   } catch (error) {
+    console.error("GET SERVICES ERROR:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -60,24 +73,82 @@ exports.getServicesByCategory = async (req, res) => {
   }
 };
 
+exports.getSpecialOfferServices = async (req, res) => {
+  try {
+    const globalOffer = await getActiveGlobalOffer();
+
+    if (!globalOffer) {
+      return res.json({
+        success: true,
+        offerApplied: false,
+        data: [],
+      });
+    }
+
+    const services = await Service.find({
+      status: "active",
+    }).limit(20);
+
+    const updated = services
+      .map((service) => {
+        const { finalAmount, discountAmount } = applyGlobalDiscount(
+          service.price,
+          globalOffer,
+        );
+
+        return {
+          ...service._doc,
+          originalPrice: service.price,
+          discountAmount,
+          finalPrice: finalAmount,
+          offerApplied: true,
+          offerTitle: globalOffer.title,
+          discountType: globalOffer.discountType,
+          discountValue: globalOffer.discountValue,
+        };
+      })
+      .filter((service) => service.discountAmount > 0);
+
+    return res.json({
+      success: true,
+      offerApplied: true,
+      data: updated,
+    });
+  } catch (error) {
+    console.error("SPECIAL OFFER ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 exports.getServiceDetails = async (req, res) => {
   try {
-    const { serviceId } = req.params;
+    const service = await Service.findById(req.params.id);
 
-    console.log("🔎 SERVICE ID FROM URL:", serviceId);
-
-    const service = await Service.findById(serviceId);
-
-    if (!service) {
+    if (!service || service.status !== "active") {
       return res.status(404).json({
         success: false,
         message: "Service not found",
       });
     }
 
+    const globalOffer = await getActiveGlobalOffer();
+
+    const { finalAmount, discountAmount } = applyGlobalDiscount(
+      service.price,
+      globalOffer,
+    );
+
     return res.json({
       success: true,
-      data: service,
+      data: {
+        ...service._doc,
+        originalPrice: service.price,
+        discountAmount,
+        finalPrice: finalAmount, // ✅ correct
+        offerApplied: !!globalOffer,
+      },
     });
   } catch (error) {
     console.error("GET SERVICE DETAILS ERROR:", error);
@@ -87,7 +158,6 @@ exports.getServiceDetails = async (req, res) => {
     });
   }
 };
-
 // exports.getServicesByCategory = async (req, res) => {
 //   try {
 //     const { categoryId } = req.params; // e.g. "cleaning"

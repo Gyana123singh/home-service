@@ -12,7 +12,10 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
+    globalDiscount: {
+      type: Number,
+      default: 0,
+    },
     items: [
       {
         service: { type: mongoose.Schema.Types.ObjectId, ref: "AdminService" },

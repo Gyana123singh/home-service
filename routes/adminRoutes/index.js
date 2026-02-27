@@ -10,8 +10,7 @@ const providerRoutes = require("./providerRoutes");
 const withdrawRoutes = require("./withdrawRoutes");
 const couponRoutes = require("./couponRoutes");
 const subscriptionRoutes = require("./subscriptionRoutes");
-
-
+const offerRoutes = require("./offerRoutes");
 
 // Mount routes
 router.use("/", adminRoutes);
@@ -23,5 +22,6 @@ router.use("/providers", providerRoutes);
 router.use("/wallet", withdrawRoutes);
 router.use("/coupons", couponRoutes);
 router.use("/subscription", subscriptionRoutes);
+router.use("/offers", offerRoutes);
 
 module.exports = router;
