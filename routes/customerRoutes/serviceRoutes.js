@@ -7,7 +7,8 @@ router.get(
   "/by-category/:categoryId",
   customerController.getServicesByCategory,
 );
-router.get("/get-service/:serviceId", customerController.getServiceDetails);
-// router.get("/categories", customerController.getCategories);
+// GET /api/services/special-offers
+router.get("/special-offers", customerController.getSpecialOfferServices);
+router.get("/get-service/:id", customerController.getServiceDetails);
 
 module.exports = router;
