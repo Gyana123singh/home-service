@@ -3,14 +3,14 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
 const sendContactMail = async ({ name, email, phone, subject, message }) => {
   const mailOptions = {
-    from: process.env.EMAIL_USER, // Always use authenticated email
+    from: process.env.SMTP_USER, // Always use authenticated email
     to: process.env.ADMIN_EMAIL,
     replyTo: email,
     subject: `New Contact Form Submission: ${subject || "No Subject"}`,
@@ -34,7 +34,7 @@ const sendRegistrationMail = async ({ firstName, lastName, email }) => {
   const fullName = `${firstName} ${lastName}`;
   // Email to admin
   const adminMailOptions = {
-    from: process.env.EMAIL_USER,
+    from: process.env.SMTP_USER,
     to: process.env.ADMIN_EMAIL,
     subject: `New User Registration`,
     html: `
@@ -47,7 +47,7 @@ const sendRegistrationMail = async ({ firstName, lastName, email }) => {
 
   // Welcome email to user
   const userMailOptions = {
-    from: process.env.EMAIL_USER,
+    from: process.env.SMTP_USER,
     to: email,
     subject: `Welcome to Home Service!`,
     html: `
