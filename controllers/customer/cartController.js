@@ -13,6 +13,11 @@ const {
   applyGlobalDiscount,
 } = require("../../utils/globalOfferService");
 
+const ReferralSettings = require("../../models/ReferralSettings");
+const User = require("../../models/User");
+const Wallet = require("../../models/Wallet");
+const Referral = require("../../models/Referral");
+const mongoose = require("mongoose");
 // ======================= ADD TO CART =======================
 exports.addServiceToCart = async (req, res) => {
   try {
@@ -350,29 +355,133 @@ exports.checkOut = async (req, res) => {
 };
 
 // ======================= MARK ORDER PAID =======================
+
 exports.markOrderPaid = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const io = req.app.get("io");
-    const order = await Order.findById(req.params.id);
+
+    const order = await Order.findById(req.params.id).session(session);
 
     if (!order) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
     }
 
+    if (order.paymentStatus === "paid") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({
+        success: true,
+        message: "Order already marked as paid",
+        data: order,
+      });
+    }
+
+    // ================= UPDATE ORDER =================
     order.paymentStatus = "paid";
     order.status = "confirmed";
-    await order.save();
+    await order.save({ session });
 
+    // ================= REFERRAL LOGIC =================
+
+    const customer = await User.findById(order.customer).session(session);
+
+    if (customer && customer.referredBy && !customer.referralRewarded) {
+      const paidOrdersCount = await Order.countDocuments({
+        customer: order.customer,
+        paymentStatus: "paid",
+      }).session(session);
+
+      if (paidOrdersCount === 1) {
+        const settings = await ReferralSettings.findOne().session(session);
+
+        if (settings && settings.isActive) {
+          if (order.grandTotal >= settings.minOrderAmount) {
+            const rewardAmount = settings.rewardAmount;
+
+            // Create referral record
+            await Referral.create(
+              [
+                {
+                  referrer: customer.referredBy,
+                  referredUser: customer._id,
+                  rewardAmount,
+                  order: order._id,
+                  status: "credited",
+                },
+              ],
+              { session },
+            );
+
+            // Update referrer earnings
+            await User.findByIdAndUpdate(
+              customer.referredBy,
+              {
+                $inc: {
+                  referralEarnings: rewardAmount,
+                  referralCount: 1,
+                },
+              },
+              { session },
+            );
+
+            // Credit wallet
+            await Wallet.findOneAndUpdate(
+              { user: customer.referredBy },
+              {
+                $inc: {
+                  balance: rewardAmount,
+                  totalEarnings: rewardAmount,
+                },
+                $push: {
+                  transactions: {
+                    type: "credit",
+                    amount: rewardAmount,
+                    description: "Referral reward",
+                  },
+                },
+              },
+              { upsert: true, session },
+            );
+
+            // Mark rewarded
+            customer.referralRewarded = true;
+            await customer.save({ session });
+          }
+        }
+      }
+    }
+
+    // ✅ Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // ================= SOCKET EVENTS =================
     io?.to("admin").emit("order:update", order);
     io?.to(`user:${order.customer}`).emit("order:update", order);
     io?.to(`vendor:${order.vendor}`).emit("order:update", order);
 
-    res.json({ success: true, data: order });
+    return res.json({
+      success: true,
+      message: "Order marked as paid",
+      data: order,
+    });
   } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+
     console.error("Mark order paid error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 

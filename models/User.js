@@ -148,9 +148,6 @@ const userSchema = new mongoose.Schema(
       companyCertificate: { type: String, select: false },
     },
 
-    referralCode: String,
-    // models/User.js (add these fields inside schema)
-
     favorites: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -170,6 +167,31 @@ const userSchema = new mongoose.Schema(
         default: "none",
       },
       stripeSessionId: String, // ✅ ADD THIS
+    },
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
+    referredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    referralEarnings: {
+      type: Number,
+      default: 0,
+    },
+
+    referralCount: {
+      type: Number,
+      default: 0,
+    },
+
+    referralRewarded: {
+      type: Boolean,
+      default: false, // prevents duplicate reward
     },
     savedAddresses: [
       {

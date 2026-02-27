@@ -5,7 +5,9 @@ const generateToken = require("../../utils/generateToken");
 const Slider = require("../../models/AdminSlider");
 const ServiceCategory = require("../../models/ServiceCategory");
 const { sendRegistrationMail } = require("../../service/mailService");
+const { generateReferralCode } = require("../../utils/referral");
 
+// ================== REGISTER ==================
 // ================== REGISTER ==================
 exports.registerCustomer = async (req, res) => {
   try {
@@ -20,7 +22,7 @@ exports.registerCustomer = async (req, res) => {
       agreeTerms,
     } = req.body;
 
-    // validation
+    // ================= VALIDATION =================
     if (!firstName || !lastName || !username || !email || !phone || !password) {
       return res.status(400).json({
         success: false,
@@ -35,7 +37,7 @@ exports.registerCustomer = async (req, res) => {
       });
     }
 
-    // check existing user
+    // ================= CHECK EXISTING USER =================
     const exists = await User.findOne({
       $or: [{ email }, { phone }, { username }],
     });
@@ -47,10 +49,33 @@ exports.registerCustomer = async (req, res) => {
       });
     }
 
-    // hash password
+    // ================= HASH PASSWORD =================
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // ================= REFERRAL VALIDATION =================
+    let referredByUser = null;
+
+    if (referralCode) {
+      referredByUser = await User.findOne({ referralCode });
+
+      if (!referredByUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid referral code",
+        });
+      }
+
+      // ✅ Prevent self-referral
+      if (referredByUser.email === email) {
+        return res.status(400).json({
+          success: false,
+          message: "You cannot use your own referral code",
+        });
+      }
+    }
+
+    // ================= CREATE USER =================
     const user = await User.create({
       firstName,
       lastName,
@@ -58,11 +83,12 @@ exports.registerCustomer = async (req, res) => {
       email,
       phone,
       password: hashedPassword,
-      referralCode,
       role: "customer",
+      referralCode: await generateReferralCode(firstName),
+      referredBy: referredByUser ? referredByUser._id : null,
     });
 
-    // Send registration emails to both user and admin
+    // ================= SEND EMAIL =================
     try {
       await sendRegistrationMail({
         firstName,
@@ -73,7 +99,8 @@ exports.registerCustomer = async (req, res) => {
       console.error("Registration email failed:", mailError.message);
     }
 
-    res.status(201).json({
+    // ================= RESPONSE =================
+    return res.status(201).json({
       success: true,
       message: "Customer registered successfully",
       token: generateToken(user),
@@ -84,9 +111,10 @@ exports.registerCustomer = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Register error:", error);
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Server error",
     });
   }
 };
@@ -596,6 +624,34 @@ exports.setDefaultAddress = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+exports.getMyReferralStats = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        referralCode: user.referralCode,
+        totalEarnings: user.referralEarnings || 0,
+        totalReferrals: user.referralCount || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Referral stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };

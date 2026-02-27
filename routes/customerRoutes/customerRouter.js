@@ -18,6 +18,7 @@ const {
   updateAddress,
   deleteAddress,
   setDefaultAddress,
+  getMyReferralStats,
 } = require("../../controllers/customer/customerController");
 const { protect } = require("../../middleware/auth.middleware");
 
@@ -38,8 +39,11 @@ router.put("/updated-my-profile", protect, updateMyProfile);
 //Favorites Backend
 router.get("/get-my-favorites", protect, getMyFavorites);
 router.post("/add-to-favorites/:serviceId", protect, addToFavorites);
-router.delete("/remove-from-favorites/:serviceId", protect, removeFromFavorites);
-
+router.delete(
+  "/remove-from-favorites/:serviceId",
+  protect,
+  removeFromFavorites,
+);
 
 //Saved Addresses
 router.get("/get-my-addresses", protect, getMyAddresses);
@@ -47,6 +51,6 @@ router.post("/add-address", protect, addAddress);
 router.put("/update-address/:addressId", protect, updateAddress);
 router.delete("/delete-address/:addressId", protect, deleteAddress);
 router.put("/set-default/:addressId", protect, setDefaultAddress);
-
+router.get("/get-my-referral-stats", protect, getMyReferralStats);
 
 module.exports = router;

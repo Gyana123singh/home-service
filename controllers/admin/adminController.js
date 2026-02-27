@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
 
+const ReferralSettings = require("../../models/ReferralSettings");
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -81,4 +82,29 @@ exports.deleteCustomer = async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
+};
+
+exports.updateReferralSettings = async (req, res) => {
+  const { rewardAmount, isActive, minOrderAmount } = req.body;
+
+  let settings = await ReferralSettings.findOne();
+
+  if (!settings) {
+    settings = await ReferralSettings.create({
+      rewardAmount, 
+      isActive,
+      minOrderAmount,
+    });
+  } else {
+    settings.rewardAmount = rewardAmount ?? settings.rewardAmount;
+    settings.isActive = isActive ?? settings.isActive;
+    settings.minOrderAmount = minOrderAmount ?? settings.minOrderAmount;
+    await settings.save();
+  }
+
+  res.json({
+    success: true,
+    message: "Referral settings updated",
+    data: settings,
+  });
 };

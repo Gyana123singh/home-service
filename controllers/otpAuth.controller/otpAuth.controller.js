@@ -1,11 +1,11 @@
 const admin = require("../../config/firebase");
 const User = require("../../models/User");
 const generateToken = require("../../utils/generateToken");
+const { generateReferralCode } = require("../../utils/referral");
 
-// 🔐 Verify Firebase OTP token and login/register user
 exports.loginWithOtp = async (req, res) => {
   try {
-    const { firebaseToken } = req.body;
+    const { firebaseToken, referralCode } = req.body;
 
     if (!firebaseToken) {
       return res.status(400).json({
@@ -14,10 +14,8 @@ exports.loginWithOtp = async (req, res) => {
       });
     }
 
-    // ✅ Verify token with Firebase
     const decoded = await admin.auth().verifyIdToken(firebaseToken);
-
-    const phone = decoded.phone_number; // e.g. +919876543210
+    const phone = decoded.phone_number;
 
     if (!phone) {
       return res.status(400).json({
@@ -26,18 +24,36 @@ exports.loginWithOtp = async (req, res) => {
       });
     }
 
-    // ✅ Find or create user
     let user = await User.findOne({ phone });
 
     if (!user) {
+      let referredByUser = null;
+
+      if (referralCode) {
+        referredByUser = await User.findOne({ referralCode });
+
+        if (!referredByUser) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid referral code",
+          });
+        }
+
+        // ✅ Prevent self-referral
+        if (referredByUser.phone === phone) {
+          referredByUser = null;
+        }
+      }
+
       user = await User.create({
         phone,
         authProvider: "otp",
         role: "customer",
+        referralCode: await generateReferralCode("OTP"),
+        referredBy: referredByUser ? referredByUser._id : null,
       });
     }
 
-    // ✅ Generate your JWT
     const token = generateToken(user);
 
     return res.json({
@@ -51,7 +67,6 @@ exports.loginWithOtp = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("OTP LOGIN ERROR:", error);
     return res.status(401).json({
       success: false,
       message: "Invalid or expired OTP token",
