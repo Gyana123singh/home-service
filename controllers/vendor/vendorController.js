@@ -381,22 +381,50 @@ exports.getVendorDashboard = async (req, res) => {
 
     const vendor = await User.findById(vendorId);
 
+    // ✅ Vendor must exist
     if (!vendor || vendor.role !== "vendor") {
-      return res.status(404).json({ message: "Vendor not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
     }
 
+    // ✅ Onboarding must be completed
     if (vendor.vendorOnboardingStep !== "completed") {
       return res.status(403).json({
+        success: false,
         message: "Complete onboarding first",
       });
     }
 
-    if (!vendor.activeCategory) {
-      return res.status(400).json({
-        message: "No active category selected",
+    // ✅ Vendor must select categories first
+    if (!vendor.categories || vendor.categories.length === 0) {
+      return res.json({
+        success: false,
+        requireCategorySelection: true,
+        message: "Please select your service categories first",
       });
     }
 
+    // ✅ If no active category selected yet
+    if (!vendor.activeCategory) {
+      return res.json({
+        success: true,
+        activeCategory: null,
+        stats: {
+          totalBookings: 0,
+          pendingJobs: 0,
+          rescheduledBookings: 0,
+          totalEarnings: 0,
+          dailyEarnings: 0,
+          weeklyEarnings: 0,
+        },
+        wallet: { balance: 0, totalEarnings: 0 },
+        recentActivity: [],
+      });
+    }
+
+    // ================= FILTER =================
     const filter = {
       vendor: vendorId,
       category: vendor.activeCategory,
@@ -499,7 +527,7 @@ exports.getVendorDashboard = async (req, res) => {
     // ================= WALLET =================
     const wallet = await Wallet.findOne({ user: vendorId });
 
-    res.json({
+    return res.json({
       success: true,
       activeCategory: vendor.activeCategory,
       stats: {
@@ -515,7 +543,10 @@ exports.getVendorDashboard = async (req, res) => {
     });
   } catch (error) {
     console.error("VENDOR DASHBOARD ERROR:", error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 exports.getMyCategories = async (req, res) => {
