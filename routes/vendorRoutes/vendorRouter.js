@@ -79,7 +79,7 @@ router.put(
   isVendor,
   updateVendorBasicProfile,
 );
-router.patch("/online-status", protect, isVendor, setOnlineStatus);
+router.patch("/set-online-status", protect, isVendor, setOnlineStatus);
 
-router.get("/online-status", protect, isVendor, getOnlineStatus);
+router.get("/get-online-status", protect, isVendor, getOnlineStatus);
 module.exports = router;
