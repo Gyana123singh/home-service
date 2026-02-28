@@ -103,7 +103,15 @@ const serviceSchema = new mongoose.Schema(
 
     // FAQ
     faqs: [{ question: String, answer: String }],
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
 
+    totalReviews: {
+      type: Number,
+      default: 0,
+    },
     // SEO
     seo: {
       metaTitle: String,

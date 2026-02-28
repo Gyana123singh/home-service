@@ -27,7 +27,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://hirehand.co.in",
-      "https://home-service-admin-b2vhkq25p-gyana123singhs-projects.vercel.app",
+      "https://admin.hirehand.co.in",
     ],
   }),
 );
