@@ -144,3 +144,24 @@ exports.createService = async (req, res) => {
     });
   }
 };
+
+exports.getVendorServices = async (req, res) => {
+  try {
+    const vendorId = req.user._id;
+
+    const services = await Service.find({ provider: vendorId })
+      .populate("category", "name slug")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: services,
+    });
+  } catch (error) {
+    console.error("GET SERVICES ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};

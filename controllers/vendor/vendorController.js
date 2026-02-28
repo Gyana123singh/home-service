@@ -511,7 +511,7 @@ exports.getVendorDashboard = async (req, res) => {
         weeklyEarnings,
       },
       wallet: wallet || { balance: 0, totalEarnings: 0 },
-      recentActivity: recentBookings,
+      recentActivity: recentBookings, 
     });
   } catch (error) {
     console.error("VENDOR DASHBOARD ERROR:", error);
