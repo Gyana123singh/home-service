@@ -4,6 +4,7 @@ const generateToken = require("../../utils/generateToken");
 const uploadToCloudinary = require("../../utils/uploadToCloudinary");
 const Booking = require("../../models/Booking");
 const ServiceCategory = require("../../models/ServiceCategory");
+const Wallet = require("../../models/Wallet");
 
 /**
  * =========================
@@ -365,47 +366,147 @@ exports.setActiveCategory = async (req, res) => {
 };
 
 exports.getVendorDashboard = async (req, res) => {
-  const vendor = await User.findById(req.user._id);
+  try {
+    const vendorId = req.user._id;
 
-  // 🚫 Block if onboarding not completed
-  if (vendor.vendorOnboardingStep !== "completed") {
-    return res.status(403).json({
-      message: "Complete onboarding first",
-      step: vendor.vendorOnboardingStep,
+    const vendor = await User.findById(vendorId);
+
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
+    if (vendor.vendorOnboardingStep !== "completed") {
+      return res.status(403).json({
+        message: "Complete onboarding first",
+      });
+    }
+
+    if (!vendor.activeCategory) {
+      return res.status(400).json({
+        message: "No active category selected",
+      });
+    }
+
+    const filter = {
+      vendor: vendorId,
+      category: vendor.activeCategory,
+    };
+
+    // ================= BOOKINGS COUNTS =================
+    const totalBookings = await Booking.countDocuments(filter);
+
+    const pendingJobs = await Booking.countDocuments({
+      ...filter,
+      status: { $in: ["upcoming", "confirmed", "awaiting"] },
     });
+
+    const rescheduledBookings = await Booking.countDocuments({
+      ...filter,
+      status: "rescheduled",
+    });
+
+    // ================= TOTAL EARNINGS =================
+    const earningsAgg = await Booking.aggregate([
+      {
+        $match: {
+          ...filter,
+          status: "completed",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $multiply: ["$totalPrice", { $ifNull: ["$quantity", 1] }],
+            },
+          },
+        },
+      },
+    ]);
+
+    const totalEarnings = earningsAgg[0]?.total || 0;
+
+    // ================= DAILY EARNINGS =================
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dailyAgg = await Booking.aggregate([
+      {
+        $match: {
+          ...filter,
+          status: "completed",
+          updatedAt: { $gte: today },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $multiply: ["$totalPrice", { $ifNull: ["$quantity", 1] }],
+            },
+          },
+        },
+      },
+    ]);
+
+    const dailyEarnings = dailyAgg[0]?.total || 0;
+
+    // ================= WEEKLY EARNINGS =================
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+
+    const weeklyAgg = await Booking.aggregate([
+      {
+        $match: {
+          ...filter,
+          status: "completed",
+          updatedAt: { $gte: weekStart },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: {
+              $multiply: ["$totalPrice", { $ifNull: ["$quantity", 1] }],
+            },
+          },
+        },
+      },
+    ]);
+
+    const weeklyEarnings = weeklyAgg[0]?.total || 0;
+
+    // ================= RECENT ACTIVITY =================
+    const recentBookings = await Booking.find(filter)
+      .populate("customer", "firstName lastName")
+      .populate("service", "title")
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // ================= WALLET =================
+    const wallet = await Wallet.findOne({ user: vendorId });
+
+    res.json({
+      success: true,
+      activeCategory: vendor.activeCategory,
+      stats: {
+        totalBookings,
+        pendingJobs,
+        rescheduledBookings,
+        totalEarnings,
+        dailyEarnings,
+        weeklyEarnings,
+      },
+      wallet: wallet || { balance: 0, totalEarnings: 0 },
+      recentActivity: recentBookings,
+    });
+  } catch (error) {
+    console.error("VENDOR DASHBOARD ERROR:", error);
+    res.status(500).json({ message: "Server error" });
   }
-
-  if (!vendor.activeCategory) {
-    return res.status(400).json({ message: "No active category selected" });
-  }
-
-  const filter = {
-    vendor: vendor._id,
-    category: vendor.activeCategory,
-  };
-
-  const totalBookings = await Booking.countDocuments(filter);
-  const pendingJobs = await Booking.countDocuments({
-    ...filter,
-    status: "upcoming",
-  });
-
-  const completed = await Booking.find({ ...filter, status: "completed" });
-
-  const totalEarnings = completed.reduce(
-    (sum, b) => sum + (b.totalPrice || 0),
-    0,
-  );
-
-  res.json({
-    success: true,
-    activeCategory: vendor.activeCategory,
-    stats: {
-      totalBookings,
-      pendingJobs,
-      totalEarnings,
-    },
-  });
 };
 exports.getMyCategories = async (req, res) => {
   const vendor = await User.findById(req.user._id).select(

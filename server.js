@@ -22,9 +22,15 @@ const app = express();
 app.use("/api/customer/payment", stripeWebhookRoutes);
 
 // ================== MIDDLEWARES ==================
-app.use(cors({
-  origin: ['http://localhost:5173', 'https://hirehand.co.in'],
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://hirehand.co.in",
+      "https://home-service-admin-smoky.vercel.app",
+    ],
+  }),
+);
 app.use(morgan("dev"));
 app.use(express.json()); // after webhook
 
@@ -60,6 +66,8 @@ initSocket(server, app, {
   },
 });
 
+// 🔥 LOAD CRON JOBS HERE
+require("./utils/cronJobs");
 // ================= START SERVER =================
 
 const PORT = process.env.PORT || 5001;

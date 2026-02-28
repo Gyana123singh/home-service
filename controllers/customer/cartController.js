@@ -390,7 +390,6 @@ exports.markOrderPaid = async (req, res) => {
     await order.save({ session });
 
     // ================= REFERRAL LOGIC =================
-
     const customer = await User.findById(order.customer).session(session);
 
     if (customer && customer.referredBy && !customer.referralRewarded) {
@@ -399,61 +398,105 @@ exports.markOrderPaid = async (req, res) => {
         paymentStatus: "paid",
       }).session(session);
 
+      // Only first paid order
       if (paidOrdersCount === 1) {
         const settings = await ReferralSettings.findOne().session(session);
 
         if (settings && settings.isActive) {
+          // Minimum order check
           if (order.grandTotal >= settings.minOrderAmount) {
-            const rewardAmount = settings.rewardAmount;
+            // Monthly limit check
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
 
-            // Create referral record
-            await Referral.create(
-              [
+            const monthlyCount = await Referral.countDocuments({
+              referrer: customer.referredBy,
+              createdAt: { $gte: startOfMonth },
+            }).session(session);
+
+            if (monthlyCount < settings.monthlyLimit) {
+              // Expiry date
+              const expiryDate = new Date();
+              expiryDate.setDate(expiryDate.getDate() + settings.expiryDays);
+
+              const rewardAmount = settings.rewardAmount;
+              const newUserBonus = settings.bonusForNewUser;
+
+              // ✅ Create referral record
+              await Referral.create(
+                [
+                  {
+                    referrer: customer.referredBy,
+                    referredUser: customer._id,
+                    rewardAmount,
+                    bonusToNewUser: newUserBonus,
+                    order: order._id,
+                    status: "credited",
+                    expiresAt: expiryDate,
+                  },
+                ],
+                { session },
+              );
+
+              // ✅ Update referrer earnings
+              await User.findByIdAndUpdate(
+                customer.referredBy,
                 {
-                  referrer: customer.referredBy,
-                  referredUser: customer._id,
-                  rewardAmount,
-                  order: order._id,
-                  status: "credited",
-                },
-              ],
-              { session },
-            );
-
-            // Update referrer earnings
-            await User.findByIdAndUpdate(
-              customer.referredBy,
-              {
-                $inc: {
-                  referralEarnings: rewardAmount,
-                  referralCount: 1,
-                },
-              },
-              { session },
-            );
-
-            // Credit wallet
-            await Wallet.findOneAndUpdate(
-              { user: customer.referredBy },
-              {
-                $inc: {
-                  balance: rewardAmount,
-                  totalEarnings: rewardAmount,
-                },
-                $push: {
-                  transactions: {
-                    type: "credit",
-                    amount: rewardAmount,
-                    description: "Referral reward",
+                  $inc: {
+                    referralEarnings: rewardAmount,
+                    referralCount: 1,
                   },
                 },
-              },
-              { upsert: true, session },
-            );
+                { session },
+              );
 
-            // Mark rewarded
-            customer.referralRewarded = true;
-            await customer.save({ session });
+              // ✅ Credit referrer wallet
+              await Wallet.findOneAndUpdate(
+                { user: customer.referredBy },
+                {
+                  $inc: {
+                    balance: rewardAmount,
+                    totalEarnings: rewardAmount,
+                  },
+                  $push: {
+                    transactions: {
+                      type: "credit",
+                      amount: rewardAmount,
+                      description: "Referral reward",
+                    },
+                  },
+                },
+                { upsert: true, session },
+              );
+
+              // ✅ Bonus wallet credit for NEW USER
+              if (newUserBonus > 0) {
+                await Wallet.findOneAndUpdate(
+                  { user: customer._id },
+                  {
+                    $inc: {
+                      balance: newUserBonus,
+                      totalEarnings: newUserBonus,
+                    },
+                    $push: {
+                      transactions: {
+                        type: "credit",
+                        amount: newUserBonus,
+                        description: "Referral joining bonus",
+                      },
+                    },
+                  },
+                  { upsert: true, session },
+                );
+              }
+
+              // Mark rewarded
+              customer.referralRewarded = true;
+              await customer.save({ session });
+            } else {
+              console.log("Monthly referral limit reached");
+            }
           }
         }
       }
@@ -478,6 +521,7 @@ exports.markOrderPaid = async (req, res) => {
     session.endSession();
 
     console.error("Mark order paid error:", err);
+
     return res.status(500).json({
       success: false,
       message: "Server error",

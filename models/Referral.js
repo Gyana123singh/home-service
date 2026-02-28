@@ -14,21 +14,28 @@ const referralSchema = new mongoose.Schema(
       required: true,
     },
 
-    rewardAmount: {
-      type: Number,
-      required: true,
-    },
-
     order: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
     },
 
+    rewardAmount: {
+      type: Number,
+      required: true,
+    },
+
+    bonusToNewUser: {
+      type: Number,
+      default: 0,
+    },
+
     status: {
       type: String,
-      enum: ["pending", "credited"],
+      enum: ["pending", "credited", "expired"],
       default: "pending",
     },
+
+    expiresAt: Date,
   },
   { timestamps: true }
 );
