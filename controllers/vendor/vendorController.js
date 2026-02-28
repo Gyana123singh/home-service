@@ -233,11 +233,10 @@ exports.uploadSelfie = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // ✅ Enforce correct step: must be on "selfie"
     if (vendor.vendorOnboardingStep !== "selfie") {
-      return res
-        .status(400)
-        .json({ message: "Upload identity documents first" });
+      return res.status(400).json({
+        message: "Upload identity documents first",
+      });
     }
 
     if (!req.files?.selfie) {
@@ -251,10 +250,21 @@ exports.uploadSelfie = async (req, res) => {
 
     vendor.selfieImage = uploaded.secure_url;
 
-    // ✅ Finish onboarding
     vendor.vendorOnboardingStep = "completed";
-    vendor.vendorStatus = "pending"; // waiting for admin
+    vendor.vendorStatus = "pending";
     await vendor.save();
+
+    // 🔥 CREATE WALLET SAFELY
+    let wallet = await Wallet.findOne({ user: vendor._id });
+
+    if (!wallet) {
+      await Wallet.create({
+        user: vendor._id,
+        balance: 0,
+        totalEarnings: 0,
+        transactions: [],
+      });
+    }
 
     return res.json({
       success: true,
