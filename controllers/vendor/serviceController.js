@@ -165,3 +165,133 @@ exports.getVendorServices = async (req, res) => {
     });
   }
 };
+
+// =========================
+// UPDATE SERVICE (VENDOR)
+// =========================
+exports.updateService = async (req, res) => {
+  try {
+    const vendorId = req.user._id;
+    const { id } = req.params;
+
+    const service = await Service.findOne({
+      _id: id,
+      provider: vendorId, // 🔐 ensures only own service
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found or unauthorized",
+      });
+    }
+
+    const {
+      name,
+      description,
+      section,
+      category,
+      serviceMode,
+      price,
+      discountPrice,
+      days,
+      startTime,
+      endTime,
+      address,
+      requirements,
+      isActive,
+      image,
+      gender,
+    } = req.body;
+
+    // Update fields if provided
+    if (name) {
+      service.title = name;
+      service.slug = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now();
+    }
+
+    if (description) {
+      service.description = description;
+      service.shortDescription = description.substring(0, 120);
+    }
+
+    if (category) service.category = category;
+    if (section) service.section = section;
+    if (serviceMode) service.serviceMode = serviceMode;
+    if (price) service.price = Number(price);
+    if (discountPrice) service.discountedPrice = Number(discountPrice);
+
+    if (gender) {
+      const validGenders = ["Male", "Female", "Both"];
+      if (!validGenders.includes(gender)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid gender value",
+        });
+      }
+      service.gender = gender;
+    }
+
+    service.days = Array.isArray(days) ? days : service.days;
+    service.startTime = startTime || service.startTime;
+    service.endTime = endTime || service.endTime;
+    service.address = address || service.address;
+
+    if (requirements) {
+      service.requirements = requirements;
+    }
+
+    if (image) {
+      service.images.main = image;
+    }
+
+    service.status = isActive ? "active" : "inactive";
+
+    await service.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Service updated successfully",
+      data: service,
+    });
+  } catch (error) {
+    console.error("UPDATE SERVICE ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// =========================
+// DELETE SERVICE (VENDOR)
+// =========================
+exports.deleteService = async (req, res) => {
+  try {
+    const vendorId = req.user._id;
+    const { id } = req.params;
+
+    const service = await Service.findOneAndDelete({
+      _id: id,
+      provider: vendorId, // 🔐 prevents deleting others
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found or unauthorized",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Service deleted successfully",
+    });
+  } catch (error) {
+    console.error("DELETE SERVICE ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
