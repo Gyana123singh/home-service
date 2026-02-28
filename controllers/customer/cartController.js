@@ -19,6 +19,7 @@ const Wallet = require("../../models/Wallet");
 const Referral = require("../../models/Referral");
 const mongoose = require("mongoose");
 // ======================= ADD TO CART =======================
+
 exports.addServiceToCart = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -31,13 +32,36 @@ exports.addServiceToCart = async (req, res) => {
       });
     }
 
+    // ================= GET SERVICE =================
     const service = await Service.findById(serviceId);
     if (!service) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Service not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Service not found",
+      });
     }
 
+    // ================= 🔥 CHECK VENDOR ONLINE =================
+    const vendorId = service.provider?._id || service.provider;
+
+    const vendor = await User.findById(vendorId);
+
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid vendor",
+      });
+    }
+
+    if (!vendor.isOnline) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor is currently offline",
+      });
+    }
+    // ===========================================================
+
+    // ================= VALIDATE REQUIREMENTS =================
     for (const reqField of service.requirements) {
       const found = selections.find((s) => s.label === reqField.label);
       if (!found) {
@@ -48,6 +72,7 @@ exports.addServiceToCart = async (req, res) => {
       }
     }
 
+    // ================= CALCULATE PRICE =================
     const { basePrice, addonsPrice, totalPrice, breakdown } =
       calculateServicePrice(service, selections);
 
@@ -74,14 +99,39 @@ exports.addServiceToCart = async (req, res) => {
 };
 
 // ======================= GET CART =======================
+// ======================= GET CART =======================
 exports.getMyCart = async (req, res) => {
   try {
     const userId = req.user._id;
-    const cartItems = await Cart.find({ user: userId }).populate("service");
-    res.json({ success: true, data: cartItems });
+
+    const cartItems = await Cart.find({ user: userId }).populate({
+      path: "service",
+      populate: {
+        path: "provider",
+        select: "firstName lastName isOnline role",
+      },
+    });
+
+    // 🔥 Filter valid items (service exists + vendor online)
+    const validCartItems = cartItems.filter((item) => {
+      return (
+        item.service &&
+        item.service.provider &&
+        item.service.provider.role === "vendor" &&
+        item.service.provider.isOnline === true
+      );
+    });
+
+    return res.json({
+      success: true,
+      data: validCartItems,
+    });
   } catch (err) {
     console.error("Get cart error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -127,6 +177,7 @@ exports.updateQuantity = async (req, res) => {
 
 // ======================= CHECKOUT =======================
 
+// ======================= CHECKOUT =======================
 exports.checkOut = async (req, res) => {
   try {
     if (!req.user) {
@@ -171,6 +222,28 @@ exports.checkOut = async (req, res) => {
           "Some services in your cart are no longer available. Please refresh your cart.",
       });
     }
+
+    // ================= 🔥 CHECK VENDOR ONLINE =================
+    for (const item of cartItems) {
+      const vendorId = item.service.provider?._id || item.service.provider;
+
+      const vendor = await User.findById(vendorId);
+
+      if (!vendor || vendor.role !== "vendor") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid vendor for one of the services",
+        });
+      }
+
+      if (!vendor.isOnline) {
+        return res.status(400).json({
+          success: false,
+          message: "Vendor is currently offline. Please try later.",
+        });
+      }
+    }
+    // =========================================================
 
     // ================= APPLY GLOBAL OFFER =================
     const globalOffer = await getActiveGlobalOffer();
@@ -232,15 +305,6 @@ exports.checkOut = async (req, res) => {
           message: "You have already used this coupon",
         });
 
-      if (coupon.isFirstOrderOnly) {
-        const orderCount = await Order.countDocuments({ customer: userId });
-        if (orderCount > 0)
-          return res.status(400).json({
-            success: false,
-            message: "This coupon is only valid for first order",
-          });
-      }
-
       if (coupon.discountType === "percentage") {
         couponDiscount = (subTotal * coupon.discountValue) / 100;
         if (coupon.maxDiscount) {
@@ -270,17 +334,10 @@ exports.checkOut = async (req, res) => {
       });
     }
 
+    // ================= CREATE ORDER =================
     const vendorId =
       cartItems[0].service.provider?._id || cartItems[0].service.provider;
 
-    if (!vendorId) {
-      return res.status(400).json({
-        success: false,
-        message: "Vendor not found for this service",
-      });
-    }
-
-    // ================= CREATE ORDER =================
     const order = await Order.create({
       customer: userId,
       vendor: vendorId,
@@ -307,9 +364,6 @@ exports.checkOut = async (req, res) => {
     });
 
     await Cart.deleteMany({ user: userId });
-
-    order.escrowAmount = paymentMethod === "COD" ? 0 : grandTotal;
-    await order.save();
 
     if (paymentMethod === "COD") {
       return res.json({

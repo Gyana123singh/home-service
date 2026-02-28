@@ -511,7 +511,7 @@ exports.getVendorDashboard = async (req, res) => {
         weeklyEarnings,
       },
       wallet: wallet || { balance: 0, totalEarnings: 0 },
-      recentActivity: recentBookings, 
+      recentActivity: recentBookings,
     });
   } catch (error) {
     console.error("VENDOR DASHBOARD ERROR:", error);
@@ -590,5 +590,78 @@ exports.updateVendorBasicProfile = async (req, res) => {
   } catch (error) {
     console.error("UPDATE VENDOR PROFILE ERROR:", error);
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =========================
+// SET ONLINE STATUS (VENDOR)
+// =========================
+exports.setOnlineStatus = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { isOnline } = req.body;
+
+    if (typeof isOnline !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "isOnline must be true or false",
+      });
+    }
+
+    const user = await User.findOne({
+      _id: userId,
+      role: "vendor",
+    });
+
+    if (!user) {
+      return res.status(403).json({
+        success: false,
+        message: "Only vendors can change online status",
+      });
+    }
+
+    user.isOnline = isOnline;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Vendor is now ${isOnline ? "Online" : "Offline"}`,
+      isOnline: user.isOnline,
+    });
+  } catch (error) {
+    console.error("SET ONLINE STATUS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// =========================
+// GET ONLINE STATUS (VENDOR)
+// =========================
+exports.getOnlineStatus = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).select("isOnline role");
+
+    if (!user || user.role !== "vendor") {
+      return res.status(403).json({
+        success: false,
+        message: "Only vendors allowed",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      isOnline: user.isOnline,
+    });
+  } catch (error) {
+    console.error("GET ONLINE STATUS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };

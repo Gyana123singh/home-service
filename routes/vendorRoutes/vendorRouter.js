@@ -14,6 +14,8 @@ const {
   submitPersonalInfo,
   getVendorBasicProfile,
   updateVendorBasicProfile,
+  setOnlineStatus,
+  getOnlineStatus,
 } = require("../../controllers/vendor/vendorController");
 
 const { protect } = require("../../middleware/auth.middleware");
@@ -77,4 +79,7 @@ router.put(
   isVendor,
   updateVendorBasicProfile,
 );
+router.patch("/online-status", protect, isVendor, setOnlineStatus);
+
+router.get("/online-status", protect, isVendor, getOnlineStatus);
 module.exports = router;

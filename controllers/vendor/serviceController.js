@@ -1,6 +1,7 @@
 const Service = require("../../models/AdminService");
 const ServiceCategory = require("../../models/ServiceCategory");
 
+
 exports.getCategories = async (req, res) => {
   try {
     const { search = "", page = 1, limit = 10 } = req.query;
@@ -295,3 +296,4 @@ exports.deleteService = async (req, res) => {
     });
   }
 };
+

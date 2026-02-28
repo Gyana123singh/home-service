@@ -147,7 +147,11 @@ const userSchema = new mongoose.Schema(
       passportPhoto: { type: String, select: false },
       companyCertificate: { type: String, select: false },
     },
-
+    // ================= ONLINE STATUS (VENDOR) =================
+    isOnline: {
+      type: Boolean,
+      default: false,
+    },
     favorites: [
       {
         type: mongoose.Schema.Types.ObjectId,
