@@ -317,36 +317,34 @@ exports.getVendorProfile = async (req, res) => {
 
 exports.setVendorCategories = async (req, res) => {
   try {
-    const { categories } = req.body; // ["Cleaning", "Electrical"]
+    const { categories } = req.body; // [ObjectId]
 
     if (!Array.isArray(categories) || categories.length === 0) {
       return res.status(400).json({ message: "Categories are required" });
     }
 
-    // 🔍 Get valid categories from Admin
-    const validCategories = await ServiceCategory.find({ status: true }).select(
-      "name",
-    );
-    const validNames = validCategories.map((c) => c.name);
+    // ✅ Validate ObjectIds exist and are active
+    const validCategories = await ServiceCategory.find({
+      _id: { $in: categories },
+      status: true,
+    });
 
-    // ❌ Check for invalid category
-    const invalid = categories.find((c) => !validNames.includes(c));
-    if (invalid) {
+    if (validCategories.length !== categories.length) {
       return res.status(400).json({
-        message: `Invalid category selected: ${invalid}`,
+        message: "One or more selected categories are invalid",
       });
     }
 
-    // ✅ Save to vendor
     const vendor = await User.findById(req.user._id);
 
     vendor.categories = categories;
-    vendor.activeCategory = categories[0]; // default first one
+    vendor.activeCategory = categories[0];
+
     await vendor.save();
 
     return res.json({
       success: true,
-      message: "Categories saved",
+      message: "Categories saved successfully",
       categories: vendor.categories,
       activeCategory: vendor.activeCategory,
     });
@@ -361,7 +359,10 @@ exports.setActiveCategory = async (req, res) => {
 
   const vendor = await User.findById(req.user._id);
 
-  if (!vendor.categories || !vendor.categories.includes(category)) {
+  if (
+    !vendor.categories ||
+    !vendor.categories.some((cat) => cat.toString() === category)
+  ) {
     return res.status(400).json({ message: "Category not allowed" });
   }
 
@@ -550,9 +551,9 @@ exports.getVendorDashboard = async (req, res) => {
   }
 };
 exports.getMyCategories = async (req, res) => {
-  const vendor = await User.findById(req.user._id).select(
-    "categories activeCategory",
-  );
+  const vendor = await User.findById(req.user._id)
+    .populate("categories", "name slug")
+    .populate("activeCategory", "name slug");
 
   res.json({
     success: true,

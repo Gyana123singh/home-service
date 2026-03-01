@@ -110,12 +110,14 @@ const userSchema = new mongoose.Schema(
 
     categories: [
       {
-        type: String, // e.g. "Cleaning", "Electrical", "Plumbing"
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ServiceCategory",
       },
     ],
 
     activeCategory: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ServiceCategory",
       default: null,
     },
 
