@@ -128,9 +128,19 @@ exports.completeBooking = async (req, res) => {
     });
 
     if (!booking) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Booking not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    // 🔥 ADD THIS CHECK HERE
+    if (booking.walletCredited) {
+      return res.json({
+        success: true,
+        message: "Wallet already credited",
+        data: booking,
+      });
     }
 
     if (booking.status === "completed") {
@@ -143,17 +153,18 @@ exports.completeBooking = async (req, res) => {
 
     booking.status = "completed";
     booking.paymentStatus = "paid";
+
     await booking.save();
 
     const order = await Order.findById(booking.order);
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: "Linked order not found for this booking",
+        message: "Linked order not found",
       });
     }
 
-    // ONLINE → release escrow
+    // ================= ONLINE PAYMENT =================
     if (booking.paymentMethod !== "COD") {
       const payment = await Payment.findOne({ order: order._id });
 
@@ -166,7 +177,7 @@ exports.completeBooking = async (req, res) => {
       }
     }
 
-    // COD → credit directly
+    // ================= COD =================
     if (booking.paymentMethod === "COD") {
       await creditVendor(
         order.vendor,
@@ -175,21 +186,29 @@ exports.completeBooking = async (req, res) => {
       );
     }
 
-    // 🔔 REALTIME UPDATES
+    // 🔥 Mark as credited
+    booking.walletCredited = true;
+    await booking.save();
+
+    // 🔔 SOCKET UPDATES
     io?.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
     io?.to(`user:${booking.customer}`).emit("booking:update", booking);
     io?.to("admin").emit("booking:update", booking);
+
     io?.to(`vendor:${booking.vendor}`).emit("vendor:dashboard:update", {
       type: "booking_completed",
     });
 
     return res.json({
       success: true,
-      message: "Booking completed & payment credited",
+      message: "Booking completed & wallet credited",
       data: booking,
     });
   } catch (err) {
     console.error("Complete booking error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };

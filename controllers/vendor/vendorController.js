@@ -382,7 +382,7 @@ exports.getVendorDashboard = async (req, res) => {
 
     const vendor = await User.findById(vendorId);
 
-    // ✅ Vendor must exist
+    // ✅ Vendor validation
     if (!vendor || vendor.role !== "vendor") {
       return res.status(404).json({
         success: false,
@@ -390,7 +390,6 @@ exports.getVendorDashboard = async (req, res) => {
       });
     }
 
-    // ✅ Onboarding must be completed
     if (vendor.vendorOnboardingStep !== "completed") {
       return res.status(403).json({
         success: false,
@@ -398,20 +397,18 @@ exports.getVendorDashboard = async (req, res) => {
       });
     }
 
-    // ✅ Vendor must select categories first
-    if (!vendor.categories || vendor.categories.length === 0) {
-      return res.json({
-        success: false,
-        requireCategorySelection: true,
-        message: "Please select your service categories first",
-      });
-    }
+    // ✅ 1️⃣ Get ACTIVE services only
+    const activeServices = await Service.find({
+      provider: vendorId,
+      status: "active",
+    }).select("_id");
 
-    // ✅ If no active category selected yet
-    if (!vendor.activeCategory) {
+    const activeServiceIds = activeServices.map((s) => s._id);
+
+    // If no active services
+    if (activeServiceIds.length === 0) {
       return res.json({
         success: true,
-        activeCategory: null,
         stats: {
           totalBookings: 0,
           pendingJobs: 0,
@@ -425,13 +422,13 @@ exports.getVendorDashboard = async (req, res) => {
       });
     }
 
-    // ================= FILTER =================
+    // ✅ 2️⃣ Filter bookings by ACTIVE services
     const filter = {
       vendor: vendorId,
-      category: vendor.activeCategory,
+      service: { $in: activeServiceIds },
     };
 
-    // ================= BOOKINGS COUNTS =================
+    // ================= BOOKINGS =================
     const totalBookings = await Booking.countDocuments(filter);
 
     const pendingJobs = await Booking.countDocuments({
@@ -466,7 +463,7 @@ exports.getVendorDashboard = async (req, res) => {
 
     const totalEarnings = earningsAgg[0]?.total || 0;
 
-    // ================= DAILY EARNINGS =================
+    // ================= DAILY =================
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -492,7 +489,7 @@ exports.getVendorDashboard = async (req, res) => {
 
     const dailyEarnings = dailyAgg[0]?.total || 0;
 
-    // ================= WEEKLY EARNINGS =================
+    // ================= WEEKLY =================
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
 
@@ -530,7 +527,6 @@ exports.getVendorDashboard = async (req, res) => {
 
     return res.json({
       success: true,
-      activeCategory: vendor.activeCategory,
       stats: {
         totalBookings,
         pendingJobs,
@@ -691,6 +687,43 @@ exports.getOnlineStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("GET ONLINE STATUS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// =========================
+// TOGGLE SERVICE STATUS
+// =========================
+exports.toggleServiceStatus = async (req, res) => {
+  try {
+    const vendorId = req.user._id;
+    const { id } = req.params;
+
+    const service = await Service.findOne({
+      _id: id,
+      provider: vendorId,
+    });
+
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: "Service not found",
+      });
+    }
+
+    service.status = service.status === "active" ? "inactive" : "active";
+    await service.save();
+
+    return res.json({
+      success: true,
+      message: `Service is now ${service.status}`,
+      status: service.status,
+    });
+  } catch (error) {
+    console.error("TOGGLE SERVICE ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",

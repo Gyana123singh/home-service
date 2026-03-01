@@ -16,6 +16,7 @@ const {
   updateVendorBasicProfile,
   setOnlineStatus,
   getOnlineStatus,
+  toggleServiceStatus,
 } = require("../../controllers/vendor/vendorController");
 
 const { protect } = require("../../middleware/auth.middleware");
@@ -82,4 +83,11 @@ router.put(
 router.patch("/set-online-status", protect, isVendor, setOnlineStatus);
 
 router.get("/get-online-status", protect, isVendor, getOnlineStatus);
+router.patch(
+  "/toggle-service-status/:id",
+  protect,
+  isVendor,
+  toggleServiceStatus,
+);
+
 module.exports = router;
