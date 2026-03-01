@@ -1,7 +1,7 @@
 const Review = require("../../models/Review");
 const Booking = require("../../models/Booking");
 const Service = require("../../models/AdminService");
-const User = require("../../models/User");
+
 
 // ======================= WRITE REVIEW =======================
 exports.writeReview = async (req, res) => {
@@ -114,6 +114,30 @@ exports.getServiceReviews = async (req, res) => {
     });
   } catch (error) {
     console.error("GET REVIEWS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// ======================= GET VENDOR REVIEWS =======================
+exports.getVendorReviews = async (req, res) => {
+  try {
+    const vendorId = req.params.vendorId;
+
+    const reviews = await Review.find({ vendor: vendorId })
+      .populate("customer", "firstName lastName")
+      .populate("service", "title")
+      .sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      total: reviews.length,
+      data: reviews,
+    });
+  } catch (error) {
+    console.error("GET VENDOR REVIEWS ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
