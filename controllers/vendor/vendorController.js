@@ -5,6 +5,8 @@ const uploadToCloudinary = require("../../utils/uploadToCloudinary");
 const Booking = require("../../models/Booking");
 const ServiceCategory = require("../../models/ServiceCategory");
 const Wallet = require("../../models/Wallet");
+const Service = require("../../models/Service");
+
 
 /**
  * =========================
