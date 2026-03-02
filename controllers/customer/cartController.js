@@ -75,6 +75,7 @@ exports.addServiceToCart = async (req, res) => {
     // ================= CALCULATE PRICE =================
     const { basePrice, addonsPrice, totalPrice, breakdown } =
       calculateServicePrice(service, selections);
+    const safeQuantity = quantity && quantity > 0 ? quantity : 1;
 
     const cartItem = await Cart.create({
       user: userId,
@@ -83,8 +84,9 @@ exports.addServiceToCart = async (req, res) => {
       date,
       basePrice,
       addonsPrice,
-      totalPrice,
-      quantity: quantity || 1,
+      unitPrice: totalPrice, // ✅ save explicitly
+      totalPrice, // this is per-unit price
+      quantity: safeQuantity,
     });
 
     return res.json({
@@ -251,17 +253,19 @@ exports.checkOut = async (req, res) => {
     let subTotal = 0;
     let globalDiscountTotal = 0;
 
-    cartItems.forEach((item) => {
-      const originalItemTotal = item.totalPrice * item.quantity;
+    for (const item of cartItems) {
+      const unitPrice = item.unitPrice; // ✅ use stored unitPrice
+
+      const itemTotal = unitPrice * item.quantity;
 
       const { finalAmount, discountAmount } = applyGlobalDiscount(
-        originalItemTotal,
+        itemTotal,
         globalOffer,
       );
 
       subTotal += finalAmount;
       globalDiscountTotal += discountAmount;
-    });
+    }
 
     subTotal = Number(subTotal.toFixed(2));
     globalDiscountTotal = Number(globalDiscountTotal.toFixed(2));
@@ -556,6 +560,31 @@ exports.markOrderPaid = async (req, res) => {
       }
     }
 
+    // ✅ Save coupon usage if applied
+    if (order.coupon && order.coupon.code) {
+      const coupon = await Coupon.findOne({ code: order.coupon.code }).session(
+        session,
+      );
+
+      if (coupon) {
+        await CouponUsage.create(
+          [
+            {
+              user: order.customer,
+              coupon: coupon._id,
+              order: order._id,
+            },
+          ],
+          { session },
+        );
+
+        await Coupon.findByIdAndUpdate(
+          coupon._id,
+          { $inc: { usedCount: 1 } },
+          { session },
+        );
+      }
+    }
     // ✅ Commit transaction
     await session.commitTransaction();
     session.endSession();
@@ -602,10 +631,20 @@ exports.previewCoupon = async (req, res) => {
     }
 
     // Calculate subtotal
+    const globalOffer = await getActiveGlobalOffer();
+
     let subTotal = 0;
-    cartItems.forEach((item) => {
-      subTotal += item.totalPrice * item.quantity;
-    });
+
+    for (const item of cartItems) {
+      const unitPrice = item.unitPrice;
+      const itemTotal = unitPrice * item.quantity;
+
+      const { finalAmount } = applyGlobalDiscount(itemTotal, globalOffer);
+
+      subTotal += finalAmount;
+    }
+
+    subTotal = Number(subTotal.toFixed(2));
 
     const coupon = await Coupon.findOne({
       code: couponCode.toUpperCase(),

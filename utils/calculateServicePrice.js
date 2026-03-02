@@ -1,31 +1,47 @@
 function calculateServicePrice(service, selections) {
-  let basePrice = service.discountedPrice || service.price || 0;
-  let addonsPrice = 0;
+  // ✅ Safe discounted price handling
+  let basePrice =
+    service.discountedPrice !== undefined && service.discountedPrice !== null
+      ? service.discountedPrice
+      : service.price || 0;
 
+  let addonsPrice = 0;
   const breakdown = [];
 
   for (const selected of selections) {
-    const req = service.requirements.find((r) => r.label === selected.label);
+    // ✅ Case-insensitive match for requirement
+    const req = service.requirements.find(
+      (r) =>
+        r.label.trim().toLowerCase() === selected.label.trim().toLowerCase(),
+    );
+
     if (!req) continue;
 
-    const opt = req.options.find((o) => o.label === selected.value);
+    // ✅ Case-insensitive match for option
+    const opt = req.options.find(
+      (o) =>
+        o.label.trim().toLowerCase() === selected.value.trim().toLowerCase(),
+    );
+
     if (!opt) continue;
 
-    addonsPrice += opt.extraPrice || 0;
+    const extra = Number(opt.extraPrice) || 0;
+
+    addonsPrice += extra;
 
     breakdown.push({
       label: selected.label,
       value: selected.value,
-      extraPrice: opt.extraPrice || 0,
+      extraPrice: extra,
     });
   }
 
-  const totalPrice = Math.max(basePrice + addonsPrice, 0);
+  const unitPrice = Math.max(basePrice + addonsPrice, 0);
 
   return {
-    basePrice,
-    addonsPrice,
-    totalPrice,
+    basePrice: Number(basePrice.toFixed(2)),
+    addonsPrice: Number(addonsPrice.toFixed(2)),
+    totalPrice: Number(unitPrice.toFixed(2)), // per unit
     breakdown,
   };
 }
