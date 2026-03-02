@@ -42,7 +42,7 @@ exports.getRequirementsByCategory = async (req, res) => {
     const { category } = req.params;
 
     const service = await Service.findOne({
-      category,
+      category: { $regex: `^${category}$`, $options: "i" },
       status: "active",
     }).select("requirements");
 
