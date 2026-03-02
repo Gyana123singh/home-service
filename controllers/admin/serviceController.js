@@ -25,6 +25,7 @@ exports.createService = async (req, res) => {
       category,
       provider,
       requirements, // snapshot from frontend
+      status: "active",
     });
 
     return res.status(201).json({
