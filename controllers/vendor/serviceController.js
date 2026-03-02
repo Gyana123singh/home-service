@@ -41,9 +41,12 @@ exports.getRequirementsByCategory = async (req, res) => {
   try {
     const { category } = req.params;
 
-    const data = await Service.findOne({ category });
+    const service = await Service.findOne({
+      category,
+      status: "active",
+    }).select("requirements");
 
-    if (!data) {
+    if (!service) {
       return res.status(404).json({
         success: false,
         message: "No requirements found for this category",
@@ -52,7 +55,7 @@ exports.getRequirementsByCategory = async (req, res) => {
 
     return res.json({
       success: true,
-      data: data.requirements,
+      data: service.requirements,
     });
   } catch (error) {
     console.error("GET REQUIREMENTS ERROR:", error);
