@@ -12,7 +12,14 @@ exports.createService = async (req, res) => {
   try {
     const provider = req.user._id;
 
-    const { title, requirements } = req.body;
+    const { title, category, requirements } = req.body;
+
+    if (!title || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and category are required",
+      });
+    }
 
     let parsedRequirements = [];
 
@@ -32,6 +39,7 @@ exports.createService = async (req, res) => {
 
     const service = await Service.create({
       title,
+      category, // ✅ added here
       provider,
       requirements: parsedRequirements,
     });
