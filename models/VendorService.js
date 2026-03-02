@@ -1,81 +1,77 @@
-// models/Service.js
 const mongoose = require("mongoose");
 
-const serviceSchema = new mongoose.Schema(
+const vendorServiceSchema = new mongoose.Schema(
   {
+    name: {
+      type: String,
+      required: true,
+    },
+
+    description: {
+      type: String,
+      required: true,
+    },
+
+    section: {
+      type: String,
+    },
+
+    category: {
+      type: String,
+      required: true,
+    },
+
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
 
-    // ===== Service Details =====
-    name: { type: String, required: true },          // Service Name
-    description: { type: String, required: true },   // Description
-
-    serviceMode: {
-      type: String,
-      enum: ["home", "shop", "both"],
-      required: true,
-    },
-
-    section: {
-      type: String, // e.g. "Home", "Office"
-      required: true,
-    },
-
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      required: true,
-    },
-
-    // ===== Availability =====
-    availability: {
-      days: {
-        type: [String], // ["Mon", "Tue", "Wed"]
-        required: true,
-      },
-      startTime: {
-        type: String, // "09:00"
-        required: true,
-      },
-      endTime: {
-        type: String, // "18:00"
-        required: true,
-      },
-    },
-
-    // ===== Price & Location =====
-    price: {
-      type: Number,
-      required: true,
-    },
-
-    discountPrice: {
-      type: Number,
-      default: 0,
-    },
-
-    address: {
-      type: String,
-      required: true,
-    },
-
-    // ===== Media =====
-    images: [
+    days: [
       {
-        type: String, // Cloudinary URL
+        type: String,
       },
     ],
 
-    // ===== Status =====
+    startTime: {
+      type: String,
+    },
+
+    endTime: {
+      type: String,
+    },
+
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Both"],
+      default: null,
+    },
+
+    image: {
+      type: String,
+    },
+
     isActive: {
       type: Boolean,
       default: true,
     },
+
+    requirements: [
+      {
+        label: String,
+        options: [
+          {
+            label: String,
+            extraPrice: {
+              type: Number,
+              default: 0,
+            },
+          },
+        ],
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-module.exports = mongoose.model("VendorService", serviceSchema);
+module.exports = mongoose.model("VendorService", vendorServiceSchema);
