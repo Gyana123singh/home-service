@@ -1,32 +1,50 @@
 function calculateServicePrice(service, selections) {
-  // ✅ Safe discounted price handling
+  if (!service) {
+    throw new Error("Service data missing");
+  }
+
+  // ✅ Safe base price handling
   let basePrice =
     service.discountedPrice !== undefined && service.discountedPrice !== null
-      ? service.discountedPrice
-      : service.price || 0;
+      ? Number(service.discountedPrice)
+      : Number(service.price) || 0;
 
   let addonsPrice = 0;
   const breakdown = [];
 
+  // ✅ Ensure selections is array
+  if (!Array.isArray(selections)) {
+    throw new Error("Selections must be an array");
+  }
+
   for (const selected of selections) {
-    // ✅ Case-insensitive match for requirement
-    const req = service.requirements.find(
-      (r) =>
-        r.label.trim().toLowerCase() === selected.label.trim().toLowerCase(),
-    );
+    // ✅ Skip invalid selection safely
+    if (!selected || !selected.label || !selected.value) {
+      console.warn("⚠️ Skipping invalid selection:", selected);
+      continue;
+    }
+
+    // Safe normalized comparison
+    const selectedLabel = String(selected.label).trim().toLowerCase();
+    const selectedValue = String(selected.value).trim().toLowerCase();
+
+    // ✅ Find matching requirement safely
+    const req = service.requirements?.find((r) => {
+      if (!r?.label) return false;
+      return String(r.label).trim().toLowerCase() === selectedLabel;
+    });
 
     if (!req) continue;
 
-    // ✅ Case-insensitive match for option
-    const opt = req.options.find(
-      (o) =>
-        o.label.trim().toLowerCase() === selected.value.trim().toLowerCase(),
-    );
+    // ✅ Find matching option safely
+    const opt = req.options?.find((o) => {
+      if (!o?.label) return false;
+      return String(o.label).trim().toLowerCase() === selectedValue;
+    });
 
     if (!opt) continue;
 
     const extra = Number(opt.extraPrice) || 0;
-
     addonsPrice += extra;
 
     breakdown.push({
