@@ -1,7 +1,6 @@
 const Service = require("../../models/AdminService");
 const ServiceCategory = require("../../models/ServiceCategory");
 
-
 exports.getCategories = async (req, res) => {
   try {
     const { search = "", page = 1, limit = 10 } = req.query;
@@ -48,9 +47,6 @@ exports.createService = async (req, res) => {
       description,
       section,
       category,
-      serviceMode,
-      price,
-      discountPrice,
       days,
       startTime,
       endTime,
@@ -58,26 +54,14 @@ exports.createService = async (req, res) => {
       requirements,
       isActive,
       image,
-      gender, // ✅ ADDED
+      gender,
     } = req.body;
 
     // ================= VALIDATION =================
-    if (!name || !description || !category || !price) {
+    if (!name || !description || !category) {
       return res.status(400).json({
         success: false,
-        message: "Name, description, category and price are required",
-      });
-    }
-
-    const cleanPrice = Number(String(price).replace("$", ""));
-    const cleanDiscount = discountPrice
-      ? Number(String(discountPrice).replace("$", ""))
-      : undefined;
-
-    if (isNaN(cleanPrice)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid price value",
+        message: "Name, description and category are required",
       });
     }
 
@@ -115,14 +99,11 @@ exports.createService = async (req, res) => {
       provider: vendorId,
       section,
       category,
-      serviceMode,
-      gender: allowedGender, // ✅ SAVED HERE
+      gender: allowedGender,
       days: Array.isArray(days) ? days : [],
       startTime: startTime || "",
       endTime: endTime || "",
       address: address || "",
-      price: cleanPrice,
-      discountedPrice: cleanDiscount,
       requirements: parsedRequirements,
       images: {
         main: image || "",
@@ -192,9 +173,6 @@ exports.updateService = async (req, res) => {
       description,
       section,
       category,
-      serviceMode,
-      price,
-      discountPrice,
       days,
       startTime,
       endTime,
@@ -205,7 +183,7 @@ exports.updateService = async (req, res) => {
       gender,
     } = req.body;
 
-    // Update fields if provided
+    // ================= UPDATE BASIC FIELDS =================
     if (name) {
       service.title = name;
       service.slug = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now();
@@ -218,10 +196,8 @@ exports.updateService = async (req, res) => {
 
     if (category) service.category = category;
     if (section) service.section = section;
-    if (serviceMode) service.serviceMode = serviceMode;
-    if (price) service.price = Number(price);
-    if (discountPrice) service.discountedPrice = Number(discountPrice);
 
+    // ================= GENDER VALIDATION =================
     if (gender) {
       const validGenders = ["Male", "Female", "Both"];
       if (!validGenders.includes(gender)) {
@@ -233,20 +209,44 @@ exports.updateService = async (req, res) => {
       service.gender = gender;
     }
 
-    service.days = Array.isArray(days) ? days : service.days;
-    service.startTime = startTime || service.startTime;
-    service.endTime = endTime || service.endTime;
-    service.address = address || service.address;
+    // ================= OTHER FIELDS =================
+    if (Array.isArray(days)) {
+      service.days = days;
+    }
 
+    if (startTime !== undefined) {
+      service.startTime = startTime;
+    }
+
+    if (endTime !== undefined) {
+      service.endTime = endTime;
+    }
+
+    if (address !== undefined) {
+      service.address = address;
+    }
+
+    // ================= REQUIREMENTS FORMAT =================
     if (requirements) {
-      service.requirements = requirements;
+      service.requirements = Array.isArray(requirements)
+        ? requirements.map((r) => ({
+            label: r.label,
+            options: (r.options || []).map((o) => ({
+              label: o.label,
+              extraPrice: Number(o.price || o.extraPrice || 0),
+            })),
+          }))
+        : service.requirements;
     }
 
     if (image) {
       service.images.main = image;
     }
 
-    service.status = isActive ? "active" : "inactive";
+    // ================= STATUS =================
+    if (typeof isActive !== "undefined") {
+      service.status = isActive ? "active" : "inactive";
+    }
 
     await service.save();
 
@@ -296,5 +296,3 @@ exports.deleteService = async (req, res) => {
     });
   }
 };
-
-

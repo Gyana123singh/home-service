@@ -10,55 +10,12 @@ const ServiceOption = require("../../models/AdminServiceOption");
  */
 exports.createService = async (req, res) => {
   try {
-    const provider = req.user._id; // ✅ logged in user
-    const {
-      title,
-      slug,
-      shortDescription,
-      description,
-      tags,
-      category,
-      durationMinutes,
-      membersRequired,
-      maxQuantity,
-      priceType,
-      taxId,
-      price,
-      discountedPrice,
-      isCancelable,
-      payLaterAllowed,
-      atStore,
-      atDoorstep,
-      approvedByAdmin,
-      status,
-      faqs,
-      metaTitle,
-      metaKeywords,
-      metaDescription,
-      schemaMarkup,
-      requirements, // 🆕
-    } = req.body;
+    const provider = req.user._id;
 
-    if (!title || !slug || !shortDescription || !category || !price) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Required fields missing" });
-    }
+    const { title, price, requirements } = req.body;
 
-    // Parse FAQs safely
-    let parsedFaqs = [];
-    if (faqs) {
-      try {
-        parsedFaqs = JSON.parse(faqs);
-      } catch {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid FAQs format" });
-      }
-    }
-
-    // Parse Requirements safely
     let parsedRequirements = [];
+
     if (requirements) {
       try {
         parsedRequirements =
@@ -66,79 +23,18 @@ exports.createService = async (req, res) => {
             ? JSON.parse(requirements)
             : requirements;
       } catch {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid requirements format" });
+        return res.status(400).json({
+          success: false,
+          message: "Invalid requirements format",
+        });
       }
     }
-
-    // Images (same as your existing code)
-    const mainImage = req.files?.mainImage
-      ? (await uploadToCloudinary(req.files.mainImage[0], "services/main"))
-          .secure_url
-      : "";
-
-    const otherImages = [];
-    if (req.files?.otherImages) {
-      for (const file of req.files.otherImages) {
-        const uploaded = await uploadToCloudinary(file, "services/other");
-        otherImages.push(uploaded.secure_url);
-      }
-    }
-
-    const files = [];
-    if (req.files?.files) {
-      for (const file of req.files.files) {
-        const uploaded = await uploadToCloudinary(file, "services/files");
-        files.push(uploaded.secure_url);
-      }
-    }
-
-    const metaImage = req.files?.metaImage
-      ? (await uploadToCloudinary(req.files.metaImage[0], "services/seo"))
-          .secure_url
-      : "";
 
     const service = await Service.create({
       title,
-      slug,
-      shortDescription,
-      description,
-      tags: tags ? tags.split(",") : [],
       provider,
-      category,
-      durationMinutes,
-      membersRequired,
-      maxQuantity,
-      priceType,
-      taxId,
-      price,
-      discountedPrice,
-
-      requirements: parsedRequirements, // 🆕 SAVE UI REQUIREMENTS
-
-      images: {
-        main: mainImage,
-        other: otherImages,
-        files,
-      },
-
-      isCancelable: isCancelable === "true",
-      payLaterAllowed: payLaterAllowed === "true",
-      atStore: atStore === "true",
-      atDoorstep: atDoorstep === "true",
-      approvedByAdmin: approvedByAdmin === "true",
-      status: status === "active" ? "active" : "inactive",
-
-      faqs: parsedFaqs,
-
-      seo: {
-        metaTitle,
-        metaKeywords: metaKeywords ? metaKeywords.split(",") : [],
-        metaDescription,
-        schemaMarkup,
-        metaImage,
-      },
+      price: Number(price),
+      requirements: parsedRequirements,
     });
 
     return res.status(201).json({
@@ -149,13 +45,10 @@ exports.createService = async (req, res) => {
   } catch (error) {
     console.error("CREATE SERVICE ERROR:", error);
 
-    if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Service slug already exists" });
-    }
-
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
