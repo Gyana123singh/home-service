@@ -72,14 +72,6 @@ exports.addServiceToCart = async (req, res) => {
       }
     }
 
-    for (const s of selections) {
-      if (!s.label || !s.value) {
-        return res.status(400).json({
-          success: false,
-          message: "Each selection must have label and value",
-        });
-      }
-    }
     // ================= CALCULATE PRICE =================
     const { basePrice, addonsPrice, totalPrice, breakdown } =
       calculateServicePrice(service, selections);
