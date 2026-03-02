@@ -34,5 +34,10 @@ router.delete(
   isVendor,
   serviceController.deleteService,
 );
+router.get(
+  "/requirements/:category",
+  protect,
+  serviceController.getRequirementsByCategory,
+);
 
 module.exports = router;

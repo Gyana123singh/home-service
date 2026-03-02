@@ -1,6 +1,8 @@
 const Service = require("../../models/AdminService");
 const ServiceCategory = require("../../models/ServiceCategory");
 
+const CategoryRequirement = require("../../models/CategoryRequirement");
+
 exports.getCategories = async (req, res) => {
   try {
     const { search = "", page = 1, limit = 10 } = req.query;
@@ -32,6 +34,32 @@ exports.getCategories = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+exports.getRequirementsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+
+    const data = await CategoryRequirement.findOne({ category });
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "No requirements found for this category",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: data.requirements,
+    });
+  } catch (error) {
+    console.error("GET REQUIREMENTS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };

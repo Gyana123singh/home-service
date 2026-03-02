@@ -11,7 +11,6 @@ const ServiceOption = require("../../models/AdminServiceOption");
 exports.createService = async (req, res) => {
   try {
     const provider = req.user._id;
-
     const { title, category, requirements } = req.body;
 
     if (!title || !category) {
@@ -21,27 +20,11 @@ exports.createService = async (req, res) => {
       });
     }
 
-    let parsedRequirements = [];
-
-    if (requirements) {
-      try {
-        parsedRequirements =
-          typeof requirements === "string"
-            ? JSON.parse(requirements)
-            : requirements;
-      } catch {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid requirements format",
-        });
-      }
-    }
-
     const service = await Service.create({
       title,
-      category, // ✅ added here
+      category,
       provider,
-      requirements: parsedRequirements,
+      requirements, // snapshot from frontend
     });
 
     return res.status(201).json({
@@ -51,7 +34,6 @@ exports.createService = async (req, res) => {
     });
   } catch (error) {
     console.error("CREATE SERVICE ERROR:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message,
