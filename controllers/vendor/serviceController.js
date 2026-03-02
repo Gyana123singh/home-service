@@ -1,7 +1,6 @@
 const Service = require("../../models/AdminService");
 const ServiceCategory = require("../../models/ServiceCategory");
 
-const CategoryRequirement = require("../../models/CategoryRequirement");
 
 exports.getCategories = async (req, res) => {
   try {
@@ -42,7 +41,7 @@ exports.getRequirementsByCategory = async (req, res) => {
   try {
     const { category } = req.params;
 
-    const data = await CategoryRequirement.findOne({ category });
+    const data = await Service.findOne({ category });
 
     if (!data) {
       return res.status(404).json({
