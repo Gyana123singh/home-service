@@ -96,7 +96,7 @@ exports.getVendorServices = async (req, res) => {
   try {
     const vendorId = req.user._id;
 
-    const services = await Service.find({ provider: vendorId })
+    const services = await VendorService.find({ provider: vendorId })
       .populate("category", "name slug")
       .sort({ createdAt: -1 });
 
@@ -121,7 +121,7 @@ exports.updateService = async (req, res) => {
     const vendorId = req.user._id;
     const { id } = req.params;
 
-    const service = await Service.findOne({
+    const service = await VendorService.findOne({
       _id: id,
       provider: vendorId, // 🔐 ensures only own service
     });
@@ -237,7 +237,7 @@ exports.deleteService = async (req, res) => {
     const vendorId = req.user._id;
     const { id } = req.params;
 
-    const service = await Service.findOneAndDelete({
+    const service = await VendorService.findOneAndDelete({
       _id: id,
       provider: vendorId, // 🔐 prevents deleting others
     });
