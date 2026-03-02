@@ -12,7 +12,7 @@ exports.createService = async (req, res) => {
   try {
     const provider = req.user._id;
 
-    const { title, price, requirements } = req.body;
+    const { title, requirements } = req.body;
 
     let parsedRequirements = [];
 
@@ -33,7 +33,6 @@ exports.createService = async (req, res) => {
     const service = await Service.create({
       title,
       provider,
-      price: Number(price),
       requirements: parsedRequirements,
     });
 
