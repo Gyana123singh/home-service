@@ -96,8 +96,7 @@ exports.getVendorServices = async (req, res) => {
   try {
     const vendorId = req.user._id;
 
-    const services = await VendorService.find({ provider: vendorId })
-      .populate("category", "name slug")
+    const services = await VendorService.find({ vendor: vendorId }) // ✅ FIXED
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -105,7 +104,7 @@ exports.getVendorServices = async (req, res) => {
       data: services,
     });
   } catch (error) {
-    console.error("GET SERVICES ERROR:", error);
+    console.error("GET VENDOR SERVICES ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
