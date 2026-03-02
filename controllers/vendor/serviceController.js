@@ -1,6 +1,7 @@
 const Service = require("../../models/AdminService");
 const ServiceCategory = require("../../models/ServiceCategory");
-const VendorService = require("../../models/VendorService");
+
+const CategoryRequirement = require("../../models/CategoryRequirement");
 
 exports.getCategories = async (req, res) => {
   try {
@@ -37,11 +38,12 @@ exports.getCategories = async (req, res) => {
   }
 };
 
+
 exports.getRequirementsByCategory = async (req, res) => {
   try {
     const { category } = req.params;
 
-    const data = await Service.findOne({ category });
+    const data = await CategoryRequirement.findOne({ category });
 
     if (!data) {
       return res.status(404).json({
@@ -65,23 +67,88 @@ exports.getRequirementsByCategory = async (req, res) => {
 // =========================
 // CREATE SERVICE (VENDOR)
 // =========================
-
-exports.createVendorService = async (req, res) => {
+exports.createService = async (req, res) => {
   try {
     const vendorId = req.user._id;
 
-    const service = await VendorService.create({
-      ...req.body,
-      vendor: vendorId,
+    const {
+      name,
+      description,
+      section,
+      category,
+      days,
+      startTime,
+      endTime,
+      address,
+      requirements,
+      isActive,
+      image,
+      gender,
+    } = req.body;
+
+    // ================= VALIDATION =================
+    if (!name || !description || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, description and category are required",
+      });
+    }
+
+    // ================= REQUIREMENTS FORMAT =================
+    const parsedRequirements = Array.isArray(requirements)
+      ? requirements.map((r) => ({
+          label: r.label,
+          options: (r.options || []).map((o) => ({
+            label: o.label,
+            extraPrice: Number(o.price || o.extraPrice || 0),
+          })),
+        }))
+      : [];
+
+    // ================= GENDER VALIDATION =================
+    let allowedGender = null;
+
+    if (gender) {
+      const validGenders = ["Male", "Female", "Both"];
+      if (!validGenders.includes(gender)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid gender value",
+        });
+      }
+      allowedGender = gender;
+    }
+
+    // ================= CREATE SERVICE =================
+    const service = await Service.create({
+      title: name,
+      slug: name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
+      shortDescription: description.substring(0, 120),
+      description,
+      provider: vendorId,
+      section,
+      category,
+      gender: allowedGender,
+      days: Array.isArray(days) ? days : [],
+      startTime: startTime || "",
+      endTime: endTime || "",
+      address: address || "",
+      requirements: parsedRequirements,
+      images: {
+        main: image || "",
+        other: [],
+        files: [],
+      },
+      status: isActive ? "active" : "inactive",
     });
 
     return res.status(201).json({
       success: true,
-      message: "Vendor service created successfully",
+      message: "Service created successfully",
       data: service,
     });
   } catch (error) {
-    console.error("CREATE VENDOR SERVICE ERROR:", error);
+    console.error("CREATE SERVICE ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",

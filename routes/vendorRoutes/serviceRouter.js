@@ -8,7 +8,7 @@ router.post(
   "/create-services",
   protect,
   isVendor,
-  serviceController.createService,
+  serviceController.createVendorService,
 );
 router.get(
   "/get-categories",
