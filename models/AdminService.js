@@ -3,17 +3,17 @@ const mongoose = require("mongoose");
 const serviceSchema = new mongoose.Schema(
   {
     // BASIC INFO
-    title: { type: String, required: true },
-    slug: { type: String, required: true, unique: true },
-    shortDescription: { type: String, required: true },
-    description: { type: String, required: true },
+    title: { type: String },
+    slug: { type: String },
+    shortDescription: { type: String },
+    description: { type: String },
     tags: [String],
 
     // RELATIONS
     provider: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true, // ✅ vendor who owns this service
+      // ✅ vendor who owns this service
     },
 
     // CATEGORY / SECTION
@@ -23,7 +23,6 @@ const serviceSchema = new mongoose.Schema(
 
     category: {
       type: String, // e.g. "Cleaning", "Painting"
-      required: true,
     },
 
     serviceMode: {
@@ -65,16 +64,16 @@ const serviceSchema = new mongoose.Schema(
       default: "tax_excluded",
     },
     taxId: { type: mongoose.Schema.Types.ObjectId, ref: "Tax" },
-    price: { type: Number, required: true },
+    price: { type: Number },
     discountedPrice: Number,
 
     // 🆕 SERVICE REQUIREMENTS (FROM UI)
     requirements: [
       {
-        label: { type: String, required: true }, // e.g. "Area size"
+        label: { type: String }, // e.g. "Area size"
         options: [
           {
-            label: { type: String, required: true }, // e.g. "1 Room"
+            label: { type: String }, // e.g. "1 Room"
             extraPrice: { type: Number, default: 0 }, // e.g. 300, 500
           },
         ],
