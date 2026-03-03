@@ -6,7 +6,7 @@ const Booking = require("../../models/Booking");
 const ServiceCategory = require("../../models/ServiceCategory");
 const Wallet = require("../../models/Wallet");
 const Service = require("../../models/AdminService");
-
+const VendorService = require("../../models/VendorService");
 
 /**
  * =========================
@@ -704,9 +704,9 @@ exports.toggleServiceStatus = async (req, res) => {
     const vendorId = req.user._id;
     const { id } = req.params;
 
-    const service = await Service.findOne({
+    const service = await VendorService.findOne({
       _id: id,
-      provider: vendorId,
+      vendor: vendorId, // ✅ FIXED HERE
     });
 
     if (!service) {
@@ -717,6 +717,7 @@ exports.toggleServiceStatus = async (req, res) => {
     }
 
     service.status = service.status === "active" ? "inactive" : "active";
+
     await service.save();
 
     return res.json({
