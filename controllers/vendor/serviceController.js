@@ -238,7 +238,7 @@ exports.deleteService = async (req, res) => {
 
     const service = await VendorService.findOneAndDelete({
       _id: id,
-      provider: vendorId, // 🔐 prevents deleting others
+      vendor: vendorId, // ✅ FIXED HERE
     });
 
     if (!service) {
