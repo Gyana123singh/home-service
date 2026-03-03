@@ -400,7 +400,7 @@ exports.getVendorDashboard = async (req, res) => {
     }
 
     // ✅ 1️⃣ Get ACTIVE services only
-    const activeServices = await Service.find({
+    const activeServices = await VendorService.find({
       provider: vendorId,
       status: "active",
     }).select("_id");
