@@ -401,7 +401,7 @@ exports.getVendorDashboard = async (req, res) => {
 
     // ✅ 1️⃣ Get ACTIVE services only
     const activeServices = await VendorService.find({
-      provider: vendorId,
+      vendor: vendorId,
       status: "active",
     }).select("_id");
 
@@ -716,7 +716,8 @@ exports.toggleServiceStatus = async (req, res) => {
       });
     }
 
-    service.status = service.status === "active" ? "inactive" : "active";
+    service.status =
+      service.status?.toLowerCase() === "active" ? "inactive" : "active";
 
     await service.save();
 
