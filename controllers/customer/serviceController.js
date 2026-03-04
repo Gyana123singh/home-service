@@ -45,10 +45,10 @@ exports.getCategories = async (req, res) => {
 
 exports.getServicesByCategory = async (req, res) => {
   try {
-    const category = req.params.categoryId.toLowerCase().trim();
+    const category = req.params.categoryId.trim();
 
     const services = await VendorService.find({
-      category: category,
+      category: { $regex: `^${category}$`, $options: "i" },
       isActive: true,
     });
 

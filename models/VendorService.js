@@ -49,7 +49,6 @@ const vendorServiceSchema = new mongoose.Schema(
     price: {
       // ⭐ add this
       type: Number,
-      required: true,
     },
     image: {
       type: String,
