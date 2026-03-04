@@ -8,7 +8,7 @@ const { sendRegistrationMail } = require("../../service/mailService");
 const { generateReferralCode } = require("../../utils/referral");
 
 // ================== REGISTER ==================
-// ================== REGISTER ==================
+// ================== REGISTER CUSTOMER ==================
 exports.registerCustomer = async (req, res) => {
   try {
     const {
@@ -37,15 +37,30 @@ exports.registerCustomer = async (req, res) => {
       });
     }
 
-    // ================= CHECK EXISTING USER =================
-    const exists = await User.findOne({
-      $or: [{ email }, { phone }, { username }],
-    });
-
-    if (exists) {
+    // ================= CHECK EMAIL =================
+    const emailExists = await User.findOne({ email });
+    if (emailExists) {
       return res.status(400).json({
         success: false,
-        message: "User already exists",
+        message: "Email already registered",
+      });
+    }
+
+    // ================= CHECK PHONE =================
+    const phoneExists = await User.findOne({ phone });
+    if (phoneExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone already registered",
+      });
+    }
+
+    // ================= CHECK USERNAME =================
+    const usernameExists = await User.findOne({ username });
+    if (usernameExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Username already taken",
       });
     }
 
@@ -66,7 +81,8 @@ exports.registerCustomer = async (req, res) => {
         });
       }
 
-      if (referredByUser._id.toString() === exists?._id?.toString()) {
+      // Prevent using own referral
+      if (referredByUser.email === email) {
         return res.status(400).json({
           success: false,
           message: "You cannot use your own referral code",

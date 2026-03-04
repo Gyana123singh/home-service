@@ -28,6 +28,8 @@ app.use(
       "http://localhost:5173",
       "https://hirehand.co.in",
       "https://admin.hirehand.co.in",
+      "*",
+      true,
     ],
   }),
 );
