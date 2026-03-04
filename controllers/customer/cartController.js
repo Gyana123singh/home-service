@@ -1,5 +1,5 @@
 const Cart = require("../../models/Cart");
-const Service = require("../../models/AdminService");
+const Service = require("../../models/VendorService");
 const Order = require("../../models/Order");
 const Booking = require("../../models/Booking");
 const Payment = require("../../models/Payment");
@@ -25,6 +25,7 @@ exports.addServiceToCart = async (req, res) => {
     const userId = req.user._id;
     const { serviceId, selections, date, quantity } = req.body;
 
+    // ================= VALIDATION =================
     if (!serviceId || !Array.isArray(selections) || !date) {
       return res.status(400).json({
         success: false,
@@ -34,6 +35,7 @@ exports.addServiceToCart = async (req, res) => {
 
     // ================= GET SERVICE =================
     const service = await Service.findById(serviceId);
+
     if (!service) {
       return res.status(404).json({
         success: false,
@@ -41,8 +43,15 @@ exports.addServiceToCart = async (req, res) => {
       });
     }
 
-    // ================= 🔥 CHECK VENDOR ONLINE =================
-    const vendorId = service.provider?._id || service.provider;
+    if (!service.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: "Service is currently inactive",
+      });
+    }
+
+    // ================= CHECK VENDOR =================
+    const vendorId = service.vendor;
 
     const vendor = await User.findById(vendorId);
 
@@ -59,11 +68,11 @@ exports.addServiceToCart = async (req, res) => {
         message: "Vendor is currently offline",
       });
     }
-    // ===========================================================
 
     // ================= VALIDATE REQUIREMENTS =================
     for (const reqField of service.requirements) {
       const found = selections.find((s) => s.label === reqField.label);
+
       if (!found) {
         return res.status(400).json({
           success: false,
@@ -75,8 +84,10 @@ exports.addServiceToCart = async (req, res) => {
     // ================= CALCULATE PRICE =================
     const { basePrice, addonsPrice, totalPrice, breakdown } =
       calculateServicePrice(service, selections);
+
     const safeQuantity = quantity && quantity > 0 ? quantity : 1;
 
+    // ================= CREATE CART ITEM =================
     const cartItem = await Cart.create({
       user: userId,
       service: service._id,
@@ -84,8 +95,8 @@ exports.addServiceToCart = async (req, res) => {
       date,
       basePrice,
       addonsPrice,
-      unitPrice: totalPrice, // ✅ save explicitly
-      totalPrice, // this is per-unit price
+      unitPrice: totalPrice,
+      totalPrice,
       quantity: safeQuantity,
     });
 
@@ -96,7 +107,11 @@ exports.addServiceToCart = async (req, res) => {
     });
   } catch (err) {
     console.error("Add to cart error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 

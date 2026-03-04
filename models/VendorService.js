@@ -46,7 +46,11 @@ const vendorServiceSchema = new mongoose.Schema(
       enum: ["Male", "Female", "Both"],
       default: null,
     },
-
+    price: {
+      // ⭐ add this
+      type: Number,
+      required: true,
+    },
     image: {
       type: String,
     },
@@ -55,7 +59,10 @@ const vendorServiceSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     requirements: [
       {
         label: String,
@@ -71,6 +78,7 @@ const vendorServiceSchema = new mongoose.Schema(
       },
     ],
   },
+
   { timestamps: true },
 );
 

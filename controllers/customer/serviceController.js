@@ -1,4 +1,4 @@
-const Service = require("../../models/AdminService");
+const VendorService = require("../../models/VendorService");
 const ServiceCategory = require("../../models/ServiceCategory");
 const {
   getActiveGlobalOffer,
@@ -47,16 +47,16 @@ exports.getServicesByCategory = async (req, res) => {
   try {
     const category = req.params.categoryId.toLowerCase().trim();
 
-    const services = await Service.find({
-      category,
-      status: "active",
+    const services = await VendorService.find({
+      category: category,
+      isActive: true,
     });
 
     const formatted = services.map((service) => ({
       ...service._doc,
-      originalPrice: service.price,
+      originalPrice: service.price || 0,
       discountAmount: 0,
-      finalPrice: service.price,
+      finalPrice: service.price || 0,
       offerApplied: false,
     }));
 
@@ -85,7 +85,7 @@ exports.getSpecialOfferServices = async (req, res) => {
       });
     }
 
-    const services = await Service.find({
+    const services = await VendorService.find({
       status: "active",
     }).limit(20);
 
@@ -124,7 +124,7 @@ exports.getSpecialOfferServices = async (req, res) => {
 };
 exports.getServiceDetails = async (req, res) => {
   try {
-    const service = await Service.findById(req.params.id);
+    const service = await VendorService.findById(req.params.id);
 
     if (!service || service.status !== "active") {
       return res.status(404).json({
