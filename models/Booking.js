@@ -31,7 +31,7 @@ const bookingSchema = new mongoose.Schema(
     // 🛠️ Which service
     service: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "AdminService",
+      ref: "VendorService",
       required: true,
     },
 
@@ -90,6 +90,10 @@ const bookingSchema = new mongoose.Schema(
       default: "upcoming",
     },
 
+    walletCredited: {
+      type: Boolean,
+      default: false,
+    },
     // 💳 Payment info
     // ✅ FIX: Added "STRIPE" here
     paymentMethod: {
@@ -106,5 +110,11 @@ const bookingSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
+bookingSchema.index(
+  { vendor: 1, date: 1, time: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { time: { $exists: true } },
+  },
+);
 module.exports = mongoose.model("Booking", bookingSchema);

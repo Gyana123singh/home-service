@@ -19,7 +19,7 @@ const couponSchema = new mongoose.Schema(
 
     applicableCategories: [String], // e.g. ["Cleaning", "Spa"]
     applicableServices: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "AdminService" },
+      { type: mongoose.Schema.Types.ObjectId, ref: "VendorService" },
     ], // optional
 
     usageLimit: { type: Number, default: 0 }, // 0 = unlimited

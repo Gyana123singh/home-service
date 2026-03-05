@@ -18,7 +18,7 @@ const orderSchema = new mongoose.Schema(
     },
     items: [
       {
-        service: { type: mongoose.Schema.Types.ObjectId, ref: "AdminService" },
+        service: { type: mongoose.Schema.Types.ObjectId, ref: "VendorService" },
         selections: [
           {
             label: String,
@@ -27,6 +27,7 @@ const orderSchema = new mongoose.Schema(
           },
         ],
         date: Date,
+        time: String, // ✅ ADD THIS
         basePrice: Number,
         addonsPrice: Number,
         totalPrice: Number,

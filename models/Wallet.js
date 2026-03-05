@@ -21,19 +21,33 @@ const walletSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // 🧾 Optional: transaction history (for wallet screen)
+    // 💸 Total withdrawn
+    withdrawnAmount: {
+      type: Number,
+      default: 0,
+    },
+
     transactions: [
       {
         type: {
-          type: String, // "credit" | "debit"
+          type: String,
           enum: ["credit", "debit"],
+          required: true,
         },
-        amount: Number,
-        description: String, // e.g. "Payment for Cleaning"
+
+        amount: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+
+        description: String,
+
         booking: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Booking",
         },
+
         createdAt: {
           type: Date,
           default: Date.now,
@@ -41,7 +55,9 @@ const walletSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
+walletSchema.index({ user: 1 });
 
 module.exports = mongoose.model("Wallet", walletSchema);

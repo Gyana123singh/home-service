@@ -1,12 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const bodyParser = require("body-parser");
+
 const { stripe } = require("../../utils/stripe");
+
 const Payment = require("../../models/Payment");
 const Order = require("../../models/Order");
+const Booking = require("../../models/Booking");
+
 const User = require("../../models/User");
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
 const SubscriptionPayment = require("../../models/SubscriptionPayment");
+
 const { getIO } = require("../../sockets/socket");
 
 router.post(
@@ -14,13 +19,13 @@ router.post(
   bodyParser.raw({ type: "application/json" }),
   async (req, res) => {
     const sig = req.headers["stripe-signature"];
-
     let event;
+
     try {
       event = stripe.webhooks.constructEvent(
         req.body,
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET
+        process.env.STRIPE_WEBHOOK_SECRET,
       );
     } catch (err) {
       console.error("Webhook signature error:", err.message);
@@ -32,9 +37,10 @@ router.post(
         const session = event.data.object;
         const metadata = session.metadata || {};
 
-        // ================================
-        // ✅ CASE 1: VENDOR SUBSCRIPTION
-        // ================================
+        // =========================================
+        // VENDOR SUBSCRIPTION PAYMENT
+        // =========================================
+
         if (metadata.type === "vendor_subscription") {
           const { vendorId, planId } = metadata;
 
@@ -42,22 +48,17 @@ router.post(
           const plan = await SubscriptionPlan.findById(planId);
 
           if (!vendor || !plan) {
-            console.error("Vendor or Plan not found for subscription");
             return res.json({ received: true });
           }
 
-          // 🛑 Idempotency guard: prevent double subscription processing
           if (vendor.subscription?.stripeSessionId === session.id) {
-            console.log("⚠️ Subscription already processed for session:", session.id);
             return res.json({ received: true });
           }
 
           const now = new Date();
-
           let startDate = now;
           let endDate = new Date(now);
 
-          // ⏳ If already active, extend from existing end date
           if (
             vendor.subscription &&
             vendor.subscription.status === "active" &&
@@ -68,7 +69,6 @@ router.post(
             endDate = new Date(vendor.subscription.endDate);
           }
 
-          // 📅 Extend by plan duration (days)
           endDate.setDate(endDate.getDate() + plan.duration);
 
           vendor.subscription = {
@@ -81,7 +81,6 @@ router.post(
 
           await vendor.save();
 
-          // 💾 Save subscription payment (idempotent - prevent duplicates)
           const existingPayment = await SubscriptionPayment.findOne({
             stripeSessionId: session.id,
           });
@@ -97,50 +96,104 @@ router.post(
               stripePaymentIntentId: session.payment_intent,
               status: "paid",
             });
-          } else {
-            console.log("⚠️ Subscription payment already recorded for session:", session.id);
           }
 
-          console.log("✅ Vendor subscription activated & payment saved:", vendor._id);
-
-          // 🔔 (Optional) Notify vendor in real-time
           try {
             const io = getIO();
+
             io.to(`vendor:${vendor._id}`).emit("subscription:update", {
               status: "active",
               plan: plan.name,
               endDate,
             });
           } catch (e) {
-            console.warn("Socket emit failed (non-fatal):", e.message);
+            console.warn("Socket emit failed:", e.message);
           }
         }
 
-        // ================================
-        // 🛒 CASE 2: CUSTOMER ORDER (EXISTING LOGIC)
-        // ================================
+        // =========================================
+        // CUSTOMER SERVICE ORDER PAYMENT
+        // =========================================
         else {
           const payment = await Payment.findOne({
             stripeSessionId: session.id,
           });
 
-          // Idempotency guard
-          if (payment && payment.status === "initiated") {
-            payment.status = "held";
-            payment.stripePaymentIntentId = session.payment_intent;
-            await payment.save();
+          if (!payment) {
+            console.log("Payment not found");
+            return res.json({ received: true });
+          }
 
-            const order = await Order.findById(payment.order);
-            if (order) {
-              order.paymentStatus = "paid";
-              order.status = "confirmed";
-              await order.save();
+          // Prevent duplicate webhook processing
+          if (payment.status !== "initiated") {
+            return res.json({ received: true });
+          }
 
-              const io = getIO();
-              io.to(`vendor:${payment.vendor}`).emit("order:update", order);
-              io.to(`user:${payment.customer}`).emit("order:update", order);
-              io.to("admin").emit("order:update", order);
+          payment.status = "held";
+          payment.stripePaymentIntentId = session.payment_intent;
+
+          await payment.save();
+
+          const order = await Order.findById(payment.order);
+
+          if (!order) {
+            return res.json({ received: true });
+          }
+
+          order.paymentStatus = "paid";
+          order.status = "confirmed";
+
+          await order.save();
+
+          // ======================================
+          // CREATE BOOKINGS (supports multi-service)
+          // ======================================
+
+          for (const item of order.items) {
+            const existingBooking = await Booking.findOne({
+              order: order._id,
+              service: item.service,
+            });
+
+            if (!existingBooking) {
+              await Booking.create({
+                order: order._id,
+                customer: order.customer,
+                vendor: order.vendor,
+
+                category: "Service",
+
+                service: item.service,
+                selections: item.selections,
+
+                date: item.date,
+                time: item.time || null,
+
+                basePrice: item.basePrice || 0,
+                addonsPrice: item.addonsPrice || 0,
+
+                totalPrice: item.totalPrice,
+                quantity: item.quantity,
+
+                paymentMethod: order.paymentMethod,
+                paymentStatus: "paid",
+                status: "awaiting",
+              });
             }
+          }
+
+          try {
+            const io = getIO();
+
+            io.to(`vendor:${payment.vendor}`).emit("booking:new", order);
+            io.to(`user:${payment.customer}`).emit("booking:new", order);
+            io.to("admin").emit("booking:new", order);
+
+            io.to(`vendor:${payment.vendor}`).emit("order:update", order);
+            io.to(`user:${payment.customer}`).emit("order:update", order);
+            io.to("admin").emit("order:update", order);
+          } catch (e) {
+            console.warn("Socket emit error:", e.message);
           }
         }
       }
@@ -150,7 +203,7 @@ router.post(
       console.error("STRIPE WEBHOOK HANDLER ERROR:", err);
       res.status(500).json({ error: "Webhook handler failed" });
     }
-  }
+  },
 );
 
 module.exports = router;

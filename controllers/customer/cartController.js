@@ -4,7 +4,6 @@ const Order = require("../../models/Order");
 const Booking = require("../../models/Booking");
 const Payment = require("../../models/Payment");
 const { calculateServicePrice } = require("../../utils/calculateServicePrice");
-const { creditVendor } = require("../../utils/walletService");
 const { createStripeCheckoutSession } = require("../../utils/stripe");
 const Coupon = require("../../models/Coupon");
 const CouponUsage = require("../../models/CouponUsage");
@@ -23,17 +22,16 @@ const mongoose = require("mongoose");
 exports.addServiceToCart = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { serviceId, selections, date, quantity } = req.body;
+    const { serviceId, selections = [], date, time, quantity = 1 } = req.body;
 
-    // ================= VALIDATION =================
-    if (!serviceId || !Array.isArray(selections) || !date) {
+    if (!serviceId || !date) {
       return res.status(400).json({
         success: false,
-        message: "serviceId, selections array and date are required",
+        message: "serviceId and date required",
       });
     }
 
-    // ================= GET SERVICE =================
+    // ✅ Get service
     const service = await Service.findById(serviceId);
 
     if (!service) {
@@ -46,14 +44,12 @@ exports.addServiceToCart = async (req, res) => {
     if (!service.isActive) {
       return res.status(400).json({
         success: false,
-        message: "Service is currently inactive",
+        message: "Service is inactive",
       });
     }
 
-    // ================= CHECK VENDOR =================
-    const vendorId = service.vendor;
-
-    const vendor = await User.findById(vendorId);
+    // ✅ Check vendor
+    const vendor = await User.findById(service.vendor);
 
     if (!vendor || vendor.role !== "vendor") {
       return res.status(400).json({
@@ -65,57 +61,44 @@ exports.addServiceToCart = async (req, res) => {
     if (!vendor.isOnline) {
       return res.status(400).json({
         success: false,
-        message: "Vendor is currently offline",
+        message: "Vendor is offline",
       });
     }
 
-    // ================= VALIDATE REQUIREMENTS =================
-    for (const reqField of service.requirements) {
-      const found = selections.find((s) => s.label === reqField.label);
-
-      if (!found) {
-        return res.status(400).json({
-          success: false,
-          message: `Please select ${reqField.label}`,
-        });
-      }
-    }
-
-    // ================= CALCULATE PRICE =================
+    // ✅ Calculate price
     const { basePrice, addonsPrice, totalPrice, breakdown } =
       calculateServicePrice(service, selections);
 
-    const safeQuantity = quantity && quantity > 0 ? quantity : 1;
+    const safeQuantity = quantity > 0 ? quantity : 1;
 
-    // ================= CREATE CART ITEM =================
     const cartItem = await Cart.create({
       user: userId,
       service: service._id,
       selections: breakdown,
       date,
+      time, // ✅ ADD THIS
       basePrice,
       addonsPrice,
       unitPrice: totalPrice,
-      totalPrice,
+      totalPrice: totalPrice * safeQuantity,
       quantity: safeQuantity,
     });
 
     return res.json({
       success: true,
-      message: "Added to cart",
+      message: "Service added to cart",
       data: cartItem,
     });
-  } catch (err) {
-    console.error("Add to cart error:", err);
+  } catch (error) {
+    console.error("ADD CART ERROR:", error);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Server error",
     });
   }
 };
 
-// ======================= GET CART =======================
 // ======================= GET CART =======================
 exports.getMyCart = async (req, res) => {
   try {
@@ -124,18 +107,17 @@ exports.getMyCart = async (req, res) => {
     const cartItems = await Cart.find({ user: userId }).populate({
       path: "service",
       populate: {
-        path: "provider",
+        path: "vendor",
         select: "firstName lastName isOnline role",
       },
     });
 
-    // 🔥 Filter valid items (service exists + vendor online)
     const validCartItems = cartItems.filter((item) => {
       return (
         item.service &&
-        item.service.provider &&
-        item.service.provider.role === "vendor" &&
-        item.service.provider.isOnline === true
+        item.service.vendor &&
+        item.service.vendor.role === "vendor" &&
+        item.service.vendor.isOnline === true
       );
     });
 
@@ -167,32 +149,43 @@ exports.removeFromCart = async (req, res) => {
 exports.updateQuantity = async (req, res) => {
   try {
     const { quantity } = req.body;
+
     if (!quantity || quantity < 1) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Quantity must be at least 1" });
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be at least 1",
+      });
     }
 
-    const item = await Cart.findOneAndUpdate(
-      { _id: req.params.id, user: req.user._id },
-      { quantity },
-      { new: true },
-    );
+    const item = await Cart.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
 
     if (!item) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Cart item not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Cart item not found",
+      });
     }
 
-    res.json({ success: true, data: item });
+    item.quantity = quantity;
+    item.totalPrice = item.unitPrice * quantity; // ✅ FIX
+
+    await item.save();
+
+    res.json({
+      success: true,
+      data: item,
+    });
   } catch (err) {
     console.error("Update quantity error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
-
-// ======================= CHECKOUT =======================
 
 // ======================= CHECKOUT =======================
 exports.checkOut = async (req, res) => {
@@ -200,7 +193,7 @@ exports.checkOut = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized. Please login again.",
+        message: "Unauthorized. Please login again",
       });
     }
 
@@ -224,54 +217,80 @@ exports.checkOut = async (req, res) => {
 
     const cartItems = await Cart.find({ user: userId }).populate("service");
 
-    if (cartItems.length === 0) {
+    if (!cartItems.length) {
       return res.status(400).json({
         success: false,
         message: "Cart is empty",
       });
     }
 
+    // ================= VALIDATE SERVICES =================
     const invalidItem = cartItems.find((item) => !item.service);
+
     if (invalidItem) {
       return res.status(400).json({
         success: false,
-        message:
-          "Some services in your cart are no longer available. Please refresh your cart.",
+        message: "Some services are no longer available",
       });
     }
 
-    // ================= 🔥 CHECK VENDOR ONLINE =================
+    // ================= VALIDATE VENDOR =================
+    const vendorIds = [
+      ...new Set(cartItems.map((i) => i.service.vendor.toString())),
+    ];
+
+    if (vendorIds.length > 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Cart cannot contain services from multiple vendors",
+      });
+    }
+
+    const vendorId = vendorIds[0];
+
+    const vendor = await User.findById(vendorId);
+
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid vendor",
+      });
+    }
+
+    if (!vendor.isOnline) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor is currently offline",
+      });
+    }
+
+    // ================= CHECK TIME SLOT =================
     for (const item of cartItems) {
-      const vendorId = item.service.provider?._id || item.service.provider;
-
-      const vendor = await User.findById(vendorId);
-
-      if (!vendor || vendor.role !== "vendor") {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid vendor for one of the services",
+      if (item.time) {
+        const existingBooking = await Booking.findOne({
+          vendor: vendorId,
+          date: item.date,
+          time: item.time,
+          status: { $in: ["upcoming", "confirmed", "awaiting"] },
         });
-      }
 
-      if (!vendor.isOnline) {
-        return res.status(400).json({
-          success: false,
-          message: "Vendor is currently offline. Please try later.",
-        });
+        if (existingBooking) {
+          return res.status(400).json({
+            success: false,
+            message: `Time slot ${item.time} already booked`,
+          });
+        }
       }
     }
-    // =========================================================
 
-    // ================= APPLY GLOBAL OFFER =================
+    // ================= CALCULATE TOTAL =================
     const globalOffer = await getActiveGlobalOffer();
 
     let subTotal = 0;
     let globalDiscountTotal = 0;
 
     for (const item of cartItems) {
-      const unitPrice = item.unitPrice; // ✅ use stored unitPrice
-
-      const itemTotal = unitPrice * item.quantity;
+      const itemTotal = item.unitPrice * item.quantity;
 
       const { finalAmount, discountAmount } = applyGlobalDiscount(
         itemTotal,
@@ -295,37 +314,42 @@ exports.checkOut = async (req, res) => {
         isActive: true,
       });
 
-      if (!coupon)
+      if (!coupon) {
         return res.status(400).json({
           success: false,
           message: "Invalid coupon code",
         });
+      }
 
-      if (coupon.expiresAt && coupon.expiresAt < new Date())
+      if (coupon.expiresAt && coupon.expiresAt < new Date()) {
         return res.status(400).json({
           success: false,
           message: "Coupon expired",
         });
+      }
 
-      if (subTotal < coupon.minOrderValue)
+      if (subTotal < coupon.minOrderValue) {
         return res.status(400).json({
           success: false,
           message: "Order amount too low for this coupon",
         });
+      }
 
       const usedByUser = await CouponUsage.countDocuments({
         user: userId,
         coupon: coupon._id,
       });
 
-      if (usedByUser >= coupon.perUserLimit)
+      if (usedByUser >= coupon.perUserLimit) {
         return res.status(400).json({
           success: false,
-          message: "You have already used this coupon",
+          message: "Coupon already used",
         });
+      }
 
       if (coupon.discountType === "percentage") {
         couponDiscount = (subTotal * coupon.discountValue) / 100;
+
         if (coupon.maxDiscount) {
           couponDiscount = Math.min(couponDiscount, coupon.maxDiscount);
         }
@@ -338,7 +362,6 @@ exports.checkOut = async (req, res) => {
 
     couponDiscount = Number(couponDiscount.toFixed(2));
 
-    // ================= FINAL TOTAL =================
     const discountedSubTotal = Number(
       Math.max(subTotal - couponDiscount, 0).toFixed(2),
     );
@@ -346,24 +369,16 @@ exports.checkOut = async (req, res) => {
     const tax = Number((discountedSubTotal * 0.18).toFixed(2));
     const grandTotal = Number((discountedSubTotal + tax).toFixed(2));
 
-    if (!grandTotal || isNaN(grandTotal) || grandTotal <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid total amount",
-      });
-    }
-
     // ================= CREATE ORDER =================
-    const vendorId =
-      cartItems[0].service.provider?._id || cartItems[0].service.provider;
-
     const order = await Order.create({
       customer: userId,
       vendor: vendorId,
+      escrowAmount: grandTotal,
       items: cartItems.map((item) => ({
         service: item.service._id,
         selections: item.selections,
         date: item.date,
+        time: item.time || null,
         basePrice: item.basePrice,
         addonsPrice: item.addonsPrice,
         totalPrice: item.totalPrice,
@@ -382,9 +397,51 @@ exports.checkOut = async (req, res) => {
         : null,
     });
 
-    await Cart.deleteMany({ user: userId });
+    // =====================================================
+    // CREATE BOOKINGS ONLY FOR COD
+    // =====================================================
 
     if (paymentMethod === "COD") {
+      const serviceIds = order.items.map((i) => i.service);
+
+      const services = await Service.find({
+        _id: { $in: serviceIds },
+      });
+
+      const serviceMap = {};
+      services.forEach((s) => {
+        serviceMap[s._id] = s;
+      });
+
+      for (const item of order.items) {
+        const serviceDoc = serviceMap[item.service];
+
+        await Booking.create({
+          customer: order.customer,
+          vendor: order.vendor,
+          order: order._id,
+          category: serviceDoc?.category || "Service",
+          service: item.service,
+          date: item.date,
+          time: item.time,
+          selections: item.selections,
+          basePrice: item.basePrice,
+          addonsPrice: item.addonsPrice,
+          totalPrice: item.totalPrice,
+          quantity: item.quantity,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: "pending",
+          status: "awaiting",
+        });
+      }
+
+      io?.to(`vendor:${vendorId}`).emit("booking:new", {
+        orderId: order._id,
+        message: "New booking received",
+      });
+
+      await Cart.deleteMany({ user: userId });
+
       return res.json({
         success: true,
         message: "Order placed with COD",
@@ -392,6 +449,7 @@ exports.checkOut = async (req, res) => {
       });
     }
 
+    // ================= STRIPE =================
     if (paymentMethod === "STRIPE") {
       const payment = await Payment.create({
         order: order._id,
@@ -412,6 +470,8 @@ exports.checkOut = async (req, res) => {
       payment.stripeSessionId = session.id;
       await payment.save();
 
+      await Cart.deleteMany({ user: userId });
+
       return res.json({
         success: true,
         message: "Redirect to Stripe",
@@ -419,7 +479,8 @@ exports.checkOut = async (req, res) => {
       });
     }
   } catch (err) {
-    console.error("❌ Checkout error:", err);
+    console.error("Checkout error:", err);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -462,6 +523,23 @@ exports.markOrderPaid = async (req, res) => {
     order.status = "confirmed";
     await order.save({ session });
 
+    // 🔥 UPDATE PAYMENT STATUS (NEW FIX)
+    await Payment.findOneAndUpdate(
+      { order: order._id },
+      { status: "held" },
+      { session },
+    );
+
+    // ================= UPDATE BOOKINGS =================
+    await Booking.updateMany(
+      { order: order._id },
+      {
+        paymentStatus: "paid",
+        status: "confirmed",
+      },
+      { session },
+    );
+
     // ================= REFERRAL LOGIC =================
     const customer = await User.findById(order.customer).session(session);
 
@@ -471,14 +549,11 @@ exports.markOrderPaid = async (req, res) => {
         paymentStatus: "paid",
       }).session(session);
 
-      // Only first paid order
       if (paidOrdersCount === 1) {
         const settings = await ReferralSettings.findOne().session(session);
 
         if (settings && settings.isActive) {
-          // Minimum order check
           if (order.grandTotal >= settings.minOrderAmount) {
-            // Monthly limit check
             const startOfMonth = new Date();
             startOfMonth.setDate(1);
             startOfMonth.setHours(0, 0, 0, 0);
@@ -489,14 +564,12 @@ exports.markOrderPaid = async (req, res) => {
             }).session(session);
 
             if (monthlyCount < settings.monthlyLimit) {
-              // Expiry date
               const expiryDate = new Date();
               expiryDate.setDate(expiryDate.getDate() + settings.expiryDays);
 
               const rewardAmount = settings.rewardAmount;
               const newUserBonus = settings.bonusForNewUser;
 
-              // ✅ Create referral record
               await Referral.create(
                 [
                   {
@@ -512,7 +585,6 @@ exports.markOrderPaid = async (req, res) => {
                 { session },
               );
 
-              // ✅ Update referrer earnings
               await User.findByIdAndUpdate(
                 customer.referredBy,
                 {
@@ -524,7 +596,6 @@ exports.markOrderPaid = async (req, res) => {
                 { session },
               );
 
-              // ✅ Credit referrer wallet
               await Wallet.findOneAndUpdate(
                 { user: customer.referredBy },
                 {
@@ -543,7 +614,6 @@ exports.markOrderPaid = async (req, res) => {
                 { upsert: true, session },
               );
 
-              // ✅ Bonus wallet credit for NEW USER
               if (newUserBonus > 0) {
                 await Wallet.findOneAndUpdate(
                   { user: customer._id },
@@ -564,18 +634,15 @@ exports.markOrderPaid = async (req, res) => {
                 );
               }
 
-              // Mark rewarded
               customer.referralRewarded = true;
               await customer.save({ session });
-            } else {
-              console.log("Monthly referral limit reached");
             }
           }
         }
       }
     }
 
-    // ✅ Save coupon usage if applied
+    // ================= SAVE COUPON USAGE =================
     if (order.coupon && order.coupon.code) {
       const coupon = await Coupon.findOne({ code: order.coupon.code }).session(
         session,
@@ -600,7 +667,8 @@ exports.markOrderPaid = async (req, res) => {
         );
       }
     }
-    // ✅ Commit transaction
+
+    // ================= COMMIT =================
     await session.commitTransaction();
     session.endSession();
 

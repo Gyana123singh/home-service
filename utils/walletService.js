@@ -1,6 +1,6 @@
 const Wallet = require("../models/Wallet");
 
-async function creditVendor(vendorId, amount, io = null) {
+async function creditVendor(vendorId, amount, bookingId = null, io = null) {
   let wallet = await Wallet.findOne({ user: vendorId });
 
   if (!wallet) {
@@ -19,11 +19,11 @@ async function creditVendor(vendorId, amount, io = null) {
     type: "credit",
     amount,
     description: "Service payment",
+    booking: bookingId,
   });
 
   await wallet.save();
 
-  // 🔔 Realtime wallet update
   if (io) {
     io.to(`vendor:${vendorId}`).emit("wallet:update", wallet);
   }

@@ -10,14 +10,18 @@ const Wallet = require("../../models/Wallet");
 // =========================
 exports.getVendorBookings = async (req, res) => {
   try {
-    console.log("VENDOR ID:", req.user._id); // 👈 ADD THIS
+    const vendorId = req.user._id;
 
-    const bookings = await Booking.find({ vendor: req.user._id })
+    const bookings = await Booking.find({ vendor: vendorId })
       .populate("customer", "firstName lastName phone")
       .populate("service", "title")
+      .populate("order") // important for address
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, data: bookings });
+    res.json({
+      success: true,
+      data: bookings,
+    });
   } catch (error) {
     console.error("GET VENDOR BOOKINGS ERROR:", error);
     res.status(500).json({ message: "Server error" });
@@ -64,6 +68,8 @@ exports.acceptBooking = async (req, res) => {
 // =========================
 // DECLINE BOOKING
 // =========================
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 exports.declineBooking = async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -74,11 +80,44 @@ exports.declineBooking = async (req, res) => {
     });
 
     if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
     }
 
     booking.status = "cancelled";
     await booking.save();
+
+    // ================= REFUND =================
+
+    if (booking.paymentMethod === "STRIPE") {
+      const payment = await Payment.findOne({
+        order: booking.order,
+      });
+
+      if (
+        payment &&
+        payment.status === "held" &&
+        payment.stripePaymentIntentId
+      ) {
+        try {
+          await stripe.refunds.create({
+            payment_intent: payment.stripePaymentIntentId,
+          });
+
+          payment.status = "refunded";
+
+          await payment.save();
+
+          console.log("Stripe refund successful");
+        } catch (refundError) {
+          console.error("Stripe refund failed:", refundError);
+        }
+      }
+    }
+
+    // ================= SOCKET EVENTS =================
 
     if (io) {
       io.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
@@ -90,10 +129,18 @@ exports.declineBooking = async (req, res) => {
       });
     }
 
-    res.json({ success: true, message: "Booking declined", data: booking });
+    return res.json({
+      success: true,
+      message: "Booking declined and refund processed (if applicable)",
+      data: booking,
+    });
   } catch (error) {
     console.error("DECLINE BOOKING ERROR:", error);
-    res.status(500).json({ message: "Server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -107,6 +154,7 @@ exports.getMyWallet = async (req, res) => {
     const wallet = await Wallet.findOne({ user: vendorId });
 
     return res.json({
+      
       success: true,
       data: wallet || { balance: 0, totalEarnings: 0 },
     });
@@ -169,7 +217,7 @@ exports.completeBooking = async (req, res) => {
       const payment = await Payment.findOne({ order: order._id });
 
       if (payment && payment.status === "held") {
-        await creditVendor(order.vendor, order.escrowAmount, io);
+        await creditVendor(order.vendor, order.escrowAmount, booking._id, io);
 
         payment.status = "released";
         payment.releasedAt = new Date();
@@ -179,11 +227,7 @@ exports.completeBooking = async (req, res) => {
 
     // ================= COD =================
     if (booking.paymentMethod === "COD") {
-      await creditVendor(
-        order.vendor,
-        booking.totalPrice * booking.quantity,
-        io,
-      );
+      await creditVendor(order.vendor, order.grandTotal, booking._id, io);
     }
 
     // 🔥 Mark as credited

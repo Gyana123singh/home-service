@@ -5,7 +5,7 @@ const cartSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     service: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "AdminService",
+      ref: "VendorService",
       required: true,
     },
 
@@ -18,6 +18,9 @@ const cartSchema = new mongoose.Schema(
     ],
 
     date: { type: Date, required: true },
+    time: {
+      type: String, // ✅ ADDED
+    },
 
     basePrice: Number,
     addonsPrice: Number,
