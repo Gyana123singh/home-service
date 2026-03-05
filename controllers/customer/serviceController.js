@@ -86,7 +86,7 @@ exports.getSpecialOfferServices = async (req, res) => {
     }
 
     const services = await VendorService.find({
-      status: "active",
+      isActive: true,
     }).limit(20);
 
     const updated = services
@@ -126,7 +126,7 @@ exports.getServiceDetails = async (req, res) => {
   try {
     const service = await VendorService.findById(req.params.id);
 
-    if (!service || service.status !== "active") {
+    if (!service || !service.isActive) {
       return res.status(404).json({
         success: false,
         message: "Service not found",
@@ -146,7 +146,7 @@ exports.getServiceDetails = async (req, res) => {
         ...service._doc,
         originalPrice: service.price,
         discountAmount,
-        finalPrice: finalAmount, // ✅ correct
+        finalPrice: finalAmount,
         offerApplied: !!globalOffer,
       },
     });

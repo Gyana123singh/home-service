@@ -401,7 +401,7 @@ exports.getVendorDashboard = async (req, res) => {
     // ✅ 1️⃣ Get ACTIVE services only
     const activeServices = await VendorService.find({
       vendor: vendorId,
-      status: "active",
+      isActive: true,
     }).select("_id");
 
     const activeServiceIds = activeServices.map((s) => s._id);
@@ -715,15 +715,14 @@ exports.toggleServiceStatus = async (req, res) => {
       });
     }
 
-    service.status =
-      service.status?.toLowerCase() === "active" ? "inactive" : "active";
+    service.isActive = !service.isActive;
 
     await service.save();
 
     return res.json({
       success: true,
-      message: `Service is now ${service.status}`,
-      status: service.status,
+      message: `Service is now ${service.isActive ? "active" : "inactive"}`,
+      isActive: service.isActive,
     });
   } catch (error) {
     console.error("TOGGLE SERVICE ERROR:", error);
