@@ -20,7 +20,7 @@ router.use("/category", categoryRoutes);
 router.use("/vendors", vendorRoutes);
 router.use("/sliders", sliderRoutes);
 router.use("/providers", providerRoutes);
-router.use("/wallet", withdrawRoutes);
+router.use("/withdraw", withdrawRoutes);
 router.use("/coupons", couponRoutes);
 router.use("/subscription", subscriptionRoutes);
 router.use("/offers", offerRoutes);
