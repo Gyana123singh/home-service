@@ -18,13 +18,11 @@ const vendorServiceSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      required: true,
     },
 
     vendor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
     },
 
     days: [
