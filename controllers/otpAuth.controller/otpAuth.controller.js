@@ -5,16 +5,24 @@ const { generateReferralCode } = require("../../utils/referral");
 
 exports.loginWithOtp = async (req, res) => {
   try {
+    console.log("REQUEST BODY:", req.body);
+
     const { firebaseToken, referralCode } = req.body;
 
     if (!firebaseToken) {
+      console.log("TOKEN MISSING");
       return res.status(400).json({
         success: false,
         message: "Firebase token is required",
       });
     }
 
+    console.log("TOKEN LENGTH:", firebaseToken.length);
+
     const decoded = await admin.auth().verifyIdToken(firebaseToken);
+
+    console.log("DECODED TOKEN:", decoded);
+
     const phone = decoded.phone_number;
 
     if (!phone) {
@@ -27,30 +35,11 @@ exports.loginWithOtp = async (req, res) => {
     let user = await User.findOne({ phone });
 
     if (!user) {
-      let referredByUser = null;
-
-      if (referralCode) {
-        referredByUser = await User.findOne({ referralCode });
-
-        if (!referredByUser) {
-          return res.status(400).json({
-            success: false,
-            message: "Invalid referral code",
-          });
-        }
-
-        // ✅ Prevent self-referral
-        if (referredByUser.phone === phone) {
-          referredByUser = null;
-        }
-      }
-
       user = await User.create({
         phone,
         authProvider: "otp",
         role: "customer",
         referralCode: await generateReferralCode("OTP"),
-        referredBy: referredByUser ? referredByUser._id : null,
       });
     }
 
@@ -60,13 +49,11 @@ exports.loginWithOtp = async (req, res) => {
       success: true,
       message: "OTP login successful",
       token,
-      user: {
-        id: user._id,
-        phone: user.phone,
-        role: user.role,
-      },
+      user,
     });
   } catch (error) {
+    console.error("FIREBASE VERIFY ERROR:", error);
+
     return res.status(401).json({
       success: false,
       message: "Invalid or expired OTP token",
