@@ -3,21 +3,23 @@ function calculateServicePrice(service, selections = []) {
     throw new Error("Service not found");
   }
 
-  // ✅ Base price from service
-  let basePrice = Number(service.price) || 0;
+  // base price
+  let basePrice = Number(service.price || service.originalPrice) || 0;
 
   let addonsPrice = 0;
   const breakdown = [];
 
   if (!Array.isArray(selections)) selections = [];
 
-  // ✅ Only process if requirements exist
   if (service.requirements && service.requirements.length > 0) {
     for (const selected of selections) {
-      if (!selected?.label || !selected?.value) continue;
+      const label = selected.label;
+      const value = selected.value || selected.option; // ✅ FIX
 
-      const selectedLabel = selected.label.toLowerCase().trim();
-      const selectedValue = selected.value.toLowerCase().trim();
+      if (!label || !value) continue;
+
+      const selectedLabel = label.toLowerCase().trim();
+      const selectedValue = value.toLowerCase().trim();
 
       const requirement = service.requirements.find(
         (r) => r.label?.toLowerCase().trim() === selectedLabel,
@@ -36,8 +38,8 @@ function calculateServicePrice(service, selections = []) {
       addonsPrice += extra;
 
       breakdown.push({
-        label: selected.label,
-        value: selected.value,
+        label,
+        value,
         extraPrice: extra,
       });
     }
