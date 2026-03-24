@@ -10,6 +10,7 @@ const {
 
 exports.getCategories = async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store"); // 🔥 ADD THIS
     const { search = "", page = 1, limit = 10 } = req.query;
 
     const query = {
@@ -45,6 +46,7 @@ exports.getCategories = async (req, res) => {
 
 exports.getServicesByCategory = async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store"); // 🔥 ADD THIS
     const category = req.params.categoryId.trim();
 
     const services = await VendorService.find({
