@@ -426,7 +426,6 @@ exports.getVendorDashboard = async (req, res) => {
     // ✅ 2️⃣ Filter bookings by ACTIVE services
     const filter = {
       vendor: vendorId,
-      service: { $in: activeServiceIds },
     };
 
     // ================= BOOKINGS =================
