@@ -35,6 +35,11 @@ app.use(
 );
 app.use(morgan("dev"));
 app.use(express.json()); // after webhook
+// ✅ ✅ ADD HERE
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 connectDB();
 
