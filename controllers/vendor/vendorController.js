@@ -379,8 +379,21 @@ exports.setActiveCategory = async (req, res) => {
 
 exports.getVendorDashboard = async (req, res) => {
   try {
-    res.set("Cache-Control", "no-store"); // 🔥 ADD THIS
-    const vendorId = req.user._id;
+    // 🔥 Disable cache (fix 304 issue)
+    res.set("Cache-Control", "no-store");
+
+    // 🔥 FIX: Support both id and _id
+    const vendorId = req.user?._id || req.user?.id;
+
+    console.log("REQ.USER:", req.user);       // Debug
+    console.log("Vendor ID:", vendorId);      // Debug
+
+    if (!vendorId) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor ID missing from token",
+      });
+    }
 
     const vendor = await User.findById(vendorId);
 
@@ -392,6 +405,7 @@ exports.getVendorDashboard = async (req, res) => {
       });
     }
 
+    // ✅ Onboarding check
     if (vendor.vendorOnboardingStep !== "completed") {
       return res.status(403).json({
         success: false,
@@ -399,35 +413,12 @@ exports.getVendorDashboard = async (req, res) => {
       });
     }
 
-    // ✅ 1️⃣ Get ACTIVE services only
-    const activeServices = await VendorService.find({
-      vendor: vendorId,
-      isActive: true,
-    }).select("_id");
-
-    const activeServiceIds = activeServices.map((s) => s._id);
-
-    // If no active services
-    if (activeServiceIds.length === 0) {
-      return res.json({
-        success: true,
-        stats: {
-          totalBookings: 0,
-          pendingJobs: 0,
-          rescheduledBookings: 0,
-          totalEarnings: 0,
-          dailyEarnings: 0,
-          weeklyEarnings: 0,
-        },
-        wallet: { balance: 0, totalEarnings: 0 },
-        recentActivity: [],
-      });
-    }
-
-    // ✅ 2️⃣ Filter bookings by ACTIVE services
+    // ================= BOOKINGS FILTER =================
     const filter = {
       vendor: vendorId,
     };
+
+    console.log("Filter:", filter); // Debug
 
     // ================= BOOKINGS =================
     const totalBookings = await Booking.countDocuments(filter);
