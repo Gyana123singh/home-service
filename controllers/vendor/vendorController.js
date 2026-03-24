@@ -379,6 +379,7 @@ exports.setActiveCategory = async (req, res) => {
 
 exports.getVendorDashboard = async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store"); // 🔥 ADD THIS
     const vendorId = req.user._id;
 
     const vendor = await User.findById(vendorId);
