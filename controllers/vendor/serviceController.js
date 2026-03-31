@@ -65,37 +65,99 @@ exports.getRequirementsByCategory = async (req, res) => {
     });
   }
 };
+
 // =========================
 // CREATE SERVICE (VENDOR)
 // =========================
-
 exports.createVendorService = async (req, res) => {
   try {
     const vendorId = req.user._id;
 
-    console.log("BODY:", req.body); // 🔥 debug
+    const {
+      name,
+      title,
+      description,
+      category,
+      section,
+      days,
+      startTime,
+      endTime,
+      gender,
+      requirements,
+    } = req.body;
+
+    console.log("BODY:", req.body);
 
     // ✅ VALIDATION
-    if (!req.body.category) {
+    if (!name && !title) {
+      return res.status(400).json({
+        success: false,
+        message: "Service name is required",
+      });
+    }
+
+    if (!description) {
+      return res.status(400).json({
+        success: false,
+        message: "Description is required",
+      });
+    }
+
+    if (!category && !section) {
       return res.status(400).json({
         success: false,
         message: "Category is required",
       });
     }
 
+    if (!days || days.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select service days",
+      });
+    }
+
+    if (!startTime || !endTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Start and End time required",
+      });
+    }
+
+    // ✅ CREATE SERVICE
     const service = await VendorService.create({
-      ...req.body,
-      category: req.body.category.trim().toLowerCase(), // ✅ FIXED
+      name: name || title, // 🔥 handle both
+      description,
+
+      // frontend sends section as category
+      category: (category || section)?.trim().toLowerCase(),
+      section: section || category,
+
       vendor: vendorId,
+
+      days,
+      startTime,
+      endTime,
+
+      gender: gender || null,
+
+      // ✅ requirements mapping fix
+      requirements: (requirements || []).map((req) => ({
+        label: req.label,
+        options: (req.options || []).map((opt) => ({
+          label: opt.label,
+          extraPrice: Number(opt.extraPrice || 0),
+        })),
+      })),
     });
 
     return res.status(201).json({
       success: true,
-      message: "Vendor service created successfully",
+      message: "Service created successfully",
       data: service,
     });
   } catch (error) {
-    console.error("CREATE VENDOR SERVICE ERROR:", error);
+    console.error("CREATE SERVICE ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
