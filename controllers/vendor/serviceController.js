@@ -73,8 +73,11 @@ exports.createVendorService = async (req, res) => {
   try {
     const vendorId = req.user._id;
 
+    console.log("BODY:", req.body); // 🔥 DEBUG
+
     const service = await VendorService.create({
       ...req.body,
+      category: req.body.category, // ✅ FORCE ADD
       vendor: vendorId,
     });
 
@@ -194,12 +197,12 @@ exports.updateService = async (req, res) => {
     if (requirements) {
       service.requirements = Array.isArray(requirements)
         ? requirements.map((r) => ({
-            label: r.label,
-            options: (r.options || []).map((o) => ({
-              label: o.label,
-              extraPrice: Number(o.price || o.extraPrice || 0),
-            })),
-          }))
+          label: r.label,
+          options: (r.options || []).map((o) => ({
+            label: o.label,
+            extraPrice: Number(o.price || o.extraPrice || 0),
+          })),
+        }))
         : service.requirements;
     }
 
