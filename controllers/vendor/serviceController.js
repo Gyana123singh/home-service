@@ -89,28 +89,14 @@ exports.createVendorService = async (req, res) => {
       requirements,
     } = req.body;
 
-    // 🔥 IMPORTANT: get category from ANY possible field
-    const category =
+    // ✅ GET CATEGORY (from frontend)
+    let category =
       req.body.category ||
       req.body.section ||
-      req.body.serviceMode || // fallback if used
+      req.body.selectedSection ||
       null;
 
-    // ✅ VALIDATION
-    if (!name && !title) {
-      return res.status(400).json({
-        success: false,
-        message: "Service name is required",
-      });
-    }
-
-    if (!description) {
-      return res.status(400).json({
-        success: false,
-        message: "Description is required",
-      });
-    }
-
+    // ❗ HARD STOP if not found
     if (!category) {
       return res.status(400).json({
         success: false,
@@ -118,32 +104,20 @@ exports.createVendorService = async (req, res) => {
       });
     }
 
-    if (!days || days.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Please select service days",
-      });
-    }
+    // ✅ CLEAN CATEGORY
+    const cleanCategory = category.trim().toLowerCase();
 
-    if (!startTime || !endTime) {
-      return res.status(400).json({
-        success: false,
-        message: "Start and End time required",
-      });
-    }
-
-    // ✅ CREATE SERVICE
-    const service = await VendorService.create({
+    // ✅ CREATE OBJECT
+    const newServiceData = {
       name: name || title,
       description,
 
-      // ✅ normalize category
-      category: category.trim().toLowerCase(),
-      section: category,
+      category: cleanCategory, // 🔥 SAVED HERE
+      section: category,       // 🔥 original value
 
       vendor: vendorId,
 
-      days,
+      days: days || [],
       startTime,
       endTime,
 
@@ -156,7 +130,12 @@ exports.createVendorService = async (req, res) => {
           extraPrice: Number(opt.extraPrice || 0),
         })),
       })),
-    });
+    };
+
+    console.log("FINAL DATA TO SAVE:", newServiceData);
+
+    // ✅ SAVE TO DB
+    const service = await VendorService.create(newServiceData);
 
     return res.status(201).json({
       success: true,
