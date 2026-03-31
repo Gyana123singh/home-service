@@ -19,8 +19,9 @@ const vendorServiceSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      lowercase: true, // ✅ auto lowercase
       trim: true,      // ✅ remove spaces
+      lowercase: true, // ✅ auto lowercase
+
     },
 
     vendor: {
