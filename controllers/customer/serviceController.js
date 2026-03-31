@@ -46,25 +46,29 @@ exports.getCategories = async (req, res) => {
 
 exports.getServicesByCategory = async (req, res) => {
   try {
-    res.set("Cache-Control", "no-store"); // 🔥 ADD THIS
-    const category = req.params.categoryId.trim();
+    res.set("Cache-Control", "no-store");
+
+    const category = req.params.categoryId?.trim();
+
+    console.log("🔍 Category received:", category);
 
     const services = await VendorService.find({
-      category: { $regex: `^${category}$`, $options: "i" },
       isActive: true,
+
+      // 🔥 FIX: flexible search
+      ...(category && {
+        $or: [
+          { category: { $regex: category, $options: "i" } },
+          { name: { $regex: category, $options: "i" } }, // fallback
+        ],
+      }),
     });
 
-    const formatted = services.map((service) => ({
-      ...service._doc,
-      originalPrice: service.price || 0,
-      discountAmount: 0,
-      finalPrice: service.price || 0,
-      offerApplied: false,
-    }));
+    console.log("✅ Services found:", services.length);
 
     return res.json({
       success: true,
-      data: formatted,
+      data: services,
     });
   } catch (error) {
     console.error("GET SERVICES ERROR:", error);
