@@ -69,16 +69,19 @@ exports.getRequirementsByCategory = async (req, res) => {
 // =========================
 // CREATE SERVICE (VENDOR)
 // =========================
+// =========================
+// CREATE SERVICE (VENDOR)
+// =========================
 exports.createVendorService = async (req, res) => {
   try {
     const vendorId = req.user._id;
+
+    console.log("REQ BODY:", req.body);
 
     const {
       name,
       title,
       description,
-      category,
-      section,
       days,
       startTime,
       endTime,
@@ -86,7 +89,12 @@ exports.createVendorService = async (req, res) => {
       requirements,
     } = req.body;
 
-    console.log("BODY:", req.body);
+    // 🔥 IMPORTANT: get category from ANY possible field
+    const category =
+      req.body.category ||
+      req.body.section ||
+      req.body.serviceMode || // fallback if used
+      null;
 
     // ✅ VALIDATION
     if (!name && !title) {
@@ -103,7 +111,7 @@ exports.createVendorService = async (req, res) => {
       });
     }
 
-    if (!category && !section) {
+    if (!category) {
       return res.status(400).json({
         success: false,
         message: "Category is required",
@@ -126,12 +134,12 @@ exports.createVendorService = async (req, res) => {
 
     // ✅ CREATE SERVICE
     const service = await VendorService.create({
-      name: name || title, // 🔥 handle both
+      name: name || title,
       description,
 
-      // frontend sends section as category
-      category: (category || section)?.trim().toLowerCase(),
-      section: section || category,
+      // ✅ normalize category
+      category: category.trim().toLowerCase(),
+      section: category,
 
       vendor: vendorId,
 
@@ -141,7 +149,6 @@ exports.createVendorService = async (req, res) => {
 
       gender: gender || null,
 
-      // ✅ requirements mapping fix
       requirements: (requirements || []).map((req) => ({
         label: req.label,
         options: (req.options || []).map((opt) => ({
@@ -158,6 +165,7 @@ exports.createVendorService = async (req, res) => {
     });
   } catch (error) {
     console.error("CREATE SERVICE ERROR:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
