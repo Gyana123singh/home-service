@@ -73,11 +73,19 @@ exports.createVendorService = async (req, res) => {
   try {
     const vendorId = req.user._id;
 
-    console.log("BODY:", req.body); // 🔥 DEBUG
+    console.log("BODY:", req.body); // 🔥 debug
+
+    // ✅ VALIDATION
+    if (!req.body.category) {
+      return res.status(400).json({
+        success: false,
+        message: "Category is required",
+      });
+    }
 
     const service = await VendorService.create({
       ...req.body,
-      category: req.body.category, // ✅ FORCE ADD
+      category: req.body.category.trim().toLowerCase(), // ✅ FIXED
       vendor: vendorId,
     });
 

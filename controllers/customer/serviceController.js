@@ -48,20 +48,13 @@ exports.getServicesByCategory = async (req, res) => {
   try {
     res.set("Cache-Control", "no-store");
 
-    const category = req.params.categoryId?.trim();
+    const category = req.params.categoryId?.trim().toLowerCase();
 
     console.log("🔍 Category received:", category);
 
     const services = await VendorService.find({
       isActive: true,
-
-      // 🔥 FIX: flexible search
-      ...(category && {
-        $or: [
-          { category: { $regex: category, $options: "i" } },
-          { name: { $regex: category, $options: "i" } }, // fallback
-        ],
-      }),
+      category: category, // ✅ STRICT MATCH (BEST)
     });
 
     console.log("✅ Services found:", services.length);
