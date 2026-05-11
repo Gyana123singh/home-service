@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema(
     // ================= BASIC INFO =================
     firstName: String,
     lastName: String,
+    avatar: String,
 
     // ================= LOCATION (GEOJSON) =================
     location: {

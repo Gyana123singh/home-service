@@ -33,8 +33,10 @@ router.post("/location-off", protect, turnOffLocation);
 // Get profile (for Profile screen)
 router.get("/get-my-profile", protect, getMyProfile);
 
+const upload = require("../../middleware/multer");
+
 // Update profile (for Edit Profile screen)
-router.put("/updated-my-profile", protect, updateMyProfile);
+router.put("/updated-my-profile", protect, upload.single("avatar"), updateMyProfile);
 
 //Favorites Backend
 router.get("/get-my-favorites", protect, getMyFavorites);

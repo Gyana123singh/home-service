@@ -377,22 +377,50 @@ exports.getMyProfile = async (req, res) => {
 // =======================
 // UPDATE MY PROFILE
 // =======================
+const uploadToCloudinary = require("../../utils/uploadToCloudinary");
+
 exports.updateMyProfile = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const { name, email, phone } = req.body;
+    const userId = req.user._id || req.user.id;
+    const { firstName, lastName, name, email, phone } = req.body;
 
-    // Optional: avatar if you upload image
-    const avatar = req.file ? req.file.path : undefined;
+    console.log("Update Profile Request Body:", req.body);
+    console.log("Update Profile File:", req.file);
 
     const updateData = {};
-    if (name) updateData.name = name;
+    
+    // Handle both name (if sent from old/other frontend) and firstName/lastName
+    if (firstName) updateData.firstName = firstName;
+    if (lastName) updateData.lastName = lastName;
+    
+    // If 'name' is provided but not firstName/lastName, try to split it
+    if (name && !firstName && !lastName) {
+      const nameParts = name.split(" ");
+      updateData.firstName = nameParts[0];
+      if (nameParts.length > 1) {
+        updateData.lastName = nameParts.slice(1).join(" ");
+      }
+    }
+
     if (email) updateData.email = email;
     if (phone) updateData.phone = phone;
-    if (avatar) updateData.avatar = avatar;
+
+    // Handle avatar from multer + Cloudinary
+    if (req.file) {
+      try {
+        const result = await uploadToCloudinary(req.file, "avatars");
+        updateData.avatar = result.secure_url;
+      } catch (uploadErr) {
+        console.error("Avatar upload failed:", uploadErr);
+        // Continue without avatar or return error? Let's continue for now but log it.
+      }
+    }
+
+    console.log("Update Data:", updateData);
 
     const user = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
+      runValidators: true,
     }).select("-password");
 
     if (!user) {
@@ -407,8 +435,12 @@ exports.updateMyProfile = async (req, res) => {
       data: user,
     });
   } catch (err) {
-    console.error("Update profile error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Update profile error details:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error", 
+      error: err.message,
+    });
   }
 };
 
