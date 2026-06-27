@@ -4,6 +4,7 @@ const { creditVendor } = require("../../utils/walletService");
 const Order = require("../../models/Order");
 const Payment = require("../../models/Payment");
 const Wallet = require("../../models/Wallet");
+const { razorpay } = require("../../utils/razorpay");
 
 // =========================
 // GET VENDOR BOOKINGS
@@ -68,8 +69,6 @@ exports.acceptBooking = async (req, res) => {
 // =========================
 // DECLINE BOOKING
 // =========================
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-
 exports.declineBooking = async (req, res) => {
   try {
     const io = req.app.get("io");
@@ -91,28 +90,21 @@ exports.declineBooking = async (req, res) => {
 
     // ================= REFUND =================
 
-    if (booking.paymentMethod === "STRIPE") {
+    if (booking.paymentMethod === "RAZORPAY") {
       const payment = await Payment.findOne({
         order: booking.order,
       });
 
-      if (
-        payment &&
-        payment.status === "held" &&
-        payment.stripePaymentIntentId
-      ) {
+      if (payment && payment.status === "held" && payment.razorpayPaymentId) {
         try {
-          await stripe.refunds.create({
-            payment_intent: payment.stripePaymentIntentId,
+          await razorpay.payments.refund(payment.razorpayPaymentId, {
+            amount: Math.round(payment.amount * 100),
           });
-
           payment.status = "refunded";
-
           await payment.save();
-
-          console.log("Stripe refund successful");
+          console.log("Razorpay refund successful");
         } catch (refundError) {
-          console.error("Stripe refund failed:", refundError);
+          console.error("Refund failed:", refundError);
         }
       }
     }

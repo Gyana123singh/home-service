@@ -12,14 +12,14 @@ const vendorRouter = require("./routes/vendorRoutes/index");
 const customerRouter = require("./routes/customerRoutes/index");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
 const otpRoutes = require("./routes/otpAuth.routes/otpAuthRoutes");
-const stripeWebhookRoutes = require("./routes/customerRoutes/stripeWebhook"); // 👈 Stripe webhook
+const razorpayWebhookRoutes = require("./routes/customerRoutes/razorpayWebhook"); // 👈 Razorpay webhook
 const contactRoute = require("./routes/websiteRoutes/contactRoute"); // 👈 Contact form route
 const registerRoute = require("./routes/websiteRoutes/registerRoute"); // 👈 Registration form route
 const app = express();
 
-// ================== STRIPE WEBHOOK (MUST BE FIRST) ==================
+// ================== RAZORPAY WEBHOOK (MUST BE FIRST) ==================
 // ❗ IMPORTANT: This must come BEFORE express.json()
-app.use("/api/customer/payment", stripeWebhookRoutes);
+app.use("/api/customer/payment", razorpayWebhookRoutes);
 
 // ================== MIDDLEWARES ==================
 app.use(

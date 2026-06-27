@@ -173,7 +173,8 @@ const userSchema = new mongoose.Schema(
         enum: ["active", "expired", "none"],
         default: "none",
       },
-      stripeSessionId: String, // ✅ ADD THIS
+      stripeSessionId: String,
+      razorpayPaymentLinkId: String,
     },
     referralCode: {
       type: String,

@@ -16,6 +16,8 @@ const subscriptionPaymentSchema = new mongoose.Schema(
     amount: Number,
     stripeSessionId: String,
     stripePaymentIntentId: String,
+    razorpayPaymentId: String,
+    razorpayPaymentLinkId: String,
     status: {
       type: String,
       enum: ["paid", "failed"],

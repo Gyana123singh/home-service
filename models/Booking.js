@@ -98,7 +98,7 @@ const bookingSchema = new mongoose.Schema(
     // ✅ FIX: Added "STRIPE" here
     paymentMethod: {
       type: String,
-      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE"],
+      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE", "RAZORPAY"],
       required: true,
     },
 

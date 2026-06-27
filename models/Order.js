@@ -45,7 +45,7 @@ const orderSchema = new mongoose.Schema(
     // ✅ UPDATED: Added "STRIPE" to enum
     paymentMethod: {
       type: String,
-      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE"],
+      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE", "RAZORPAY"],
       required: true,
     },
 
@@ -67,8 +67,8 @@ const orderSchema = new mongoose.Schema(
 
     escrowAmount: { type: Number, default: 0 },
 
-    // 🔁 Optional: change default gateway to stripe
-    paymentGateway: { type: String, default: "stripe" },
+    // 🔁 Default gateway is Razorpay now
+    paymentGateway: { type: String, default: "razorpay" },
 
     transactionId: { type: String },
   },

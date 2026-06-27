@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const bodyParser = require("body-parser");
 
-const { stripe } = require("../../utils/stripe");
+const { verifyRazorpaySignature } = require("../../utils/razorpay");
 
 const Payment = require("../../models/Payment");
 const Order = require("../../models/Order");
@@ -18,31 +18,44 @@ router.post(
   "/webhook",
   bodyParser.raw({ type: "application/json" }),
   async (req, res) => {
-    const sig = req.headers["stripe-signature"];
+    const signature = req.headers["x-razorpay-signature"];
+    const payload = req.body.toString("utf8");
+
+    if (
+      process.env.RAZORPAY_WEBHOOK_SECRET &&
+      !verifyRazorpaySignature(
+        payload,
+        signature,
+        process.env.RAZORPAY_WEBHOOK_SECRET,
+      )
+    ) {
+      return res.status(400).send("Webhook Error: Invalid signature");
+    }
+
     let event;
 
     try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET,
-      );
+      event = JSON.parse(payload);
     } catch (err) {
-      console.error("Webhook signature error:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
+      console.error("Webhook payload parse error:", err.message);
+      return res.status(400).send("Webhook Error: Invalid payload");
     }
 
     try {
-      if (event.type === "checkout.session.completed") {
-        const session = event.data.object;
-        const metadata = session.metadata || {};
+      const paymentEntity = event?.payload?.payment?.entity || {};
+      const notes = paymentEntity.notes || {};
+      const eventType = event?.event;
 
-        // =========================================
-        // VENDOR SUBSCRIPTION PAYMENT
-        // =========================================
+      if (eventType === "payment.captured" || eventType === "payment.authorized") {
+        const payment = await Payment.findOne({
+          $or: [
+            { razorpayPaymentId: paymentEntity.id },
+            { razorpayPaymentLinkId: paymentEntity.id },
+          ],
+        });
 
-        if (metadata.type === "vendor_subscription") {
-          const { vendorId, planId } = metadata;
+        if (notes.type === "vendor_subscription") {
+          const { vendorId, planId } = notes;
 
           const vendor = await User.findById(vendorId);
           const plan = await SubscriptionPlan.findById(planId);
@@ -51,7 +64,7 @@ router.post(
             return res.json({ received: true });
           }
 
-          if (vendor.subscription?.stripeSessionId === session.id) {
+          if (vendor.subscription?.razorpayPaymentLinkId === paymentEntity.id) {
             return res.json({ received: true });
           }
 
@@ -76,24 +89,22 @@ router.post(
             startDate,
             endDate,
             status: "active",
-            stripeSessionId: session.id,
+            razorpayPaymentLinkId: paymentEntity.id,
           };
 
           await vendor.save();
 
           const existingPayment = await SubscriptionPayment.findOne({
-            stripeSessionId: session.id,
+            razorpayPaymentId: paymentEntity.id,
           });
 
           if (!existingPayment) {
             await SubscriptionPayment.create({
               vendor: vendor._id,
               plan: plan._id,
-              amount: session.amount_total
-                ? session.amount_total / 100
-                : plan.price,
-              stripeSessionId: session.id,
-              stripePaymentIntentId: session.payment_intent,
+              amount: paymentEntity.amount ? paymentEntity.amount / 100 : plan.price,
+              razorpayPaymentId: paymentEntity.id,
+              razorpayPaymentLinkId: paymentEntity.id,
               status: "paid",
             });
           }
@@ -109,29 +120,33 @@ router.post(
           } catch (e) {
             console.warn("Socket emit failed:", e.message);
           }
+
+          return res.json({ received: true });
         }
 
-        // =========================================
-        // CUSTOMER SERVICE ORDER PAYMENT
-        // =========================================
-        else {
-          const payment = await Payment.findOne({
-            stripeSessionId: session.id,
-          });
+        if (!payment) {
+          const orderId = notes.orderId || notes.order_id;
+          const order = orderId ? await Order.findById(orderId) : null;
 
-          if (!payment) {
-            console.log("Payment not found");
+          if (!order) {
             return res.json({ received: true });
           }
 
-          // Prevent duplicate webhook processing
-          if (payment.status !== "initiated") {
+          const fallbackPayment = await Payment.findOne({ order: order._id });
+          if (!fallbackPayment) {
             return res.json({ received: true });
           }
 
+          payment = fallbackPayment;
+        }
+
+        if (payment && payment.status !== "initiated") {
+          return res.json({ received: true });
+        }
+
+        if (payment) {
           payment.status = "held";
-          payment.stripePaymentIntentId = session.payment_intent;
-
+          payment.razorpayPaymentId = paymentEntity.id;
           await payment.save();
 
           const order = await Order.findById(payment.order);
@@ -145,10 +160,6 @@ router.post(
 
           await order.save();
 
-          // ======================================
-          // CREATE BOOKINGS (supports multi-service)
-          // ======================================
-
           for (const item of order.items) {
             const existingBooking = await Booking.findOne({
               order: order._id,
@@ -160,21 +171,15 @@ router.post(
                 order: order._id,
                 customer: order.customer,
                 vendor: order.vendor,
-
                 category: "Service",
-
                 service: item.service,
                 selections: item.selections,
-
                 date: item.date,
                 time: item.time || null,
-
                 basePrice: item.basePrice || 0,
                 addonsPrice: item.addonsPrice || 0,
-
                 totalPrice: item.totalPrice,
                 quantity: item.quantity,
-
                 paymentMethod: order.paymentMethod,
                 paymentStatus: "paid",
                 status: "awaiting",
@@ -200,7 +205,7 @@ router.post(
 
       res.json({ received: true });
     } catch (err) {
-      console.error("STRIPE WEBHOOK HANDLER ERROR:", err);
+      console.error("RAZORPAY WEBHOOK HANDLER ERROR:", err);
       res.status(500).json({ error: "Webhook handler failed" });
     }
   },

@@ -11,7 +11,7 @@ const paymentSchema = new mongoose.Schema(
 
     method: {
       type: String,
-      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE"],
+      enum: ["UPI", "CARD", "NET_BANKING", "COD", "STRIPE", "RAZORPAY"],
       required: true,
     },
 
@@ -21,10 +21,12 @@ const paymentSchema = new mongoose.Schema(
       default: "initiated",
     },
 
-    gateway: { type: String, default: "stripe" },
+    gateway: { type: String, default: "razorpay" },
 
     stripePaymentIntentId: String,
     stripeSessionId: String,
+    razorpayPaymentId: String,
+    razorpayPaymentLinkId: String,
 
     releasedAt: Date,
   },

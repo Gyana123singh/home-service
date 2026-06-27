@@ -1,6 +1,6 @@
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
 const User = require("../../models/User");
-const { stripe } = require("../../utils/stripe");
+const { createRazorpayCheckoutSession } = require("../../utils/razorpay");
 const SubscriptionPayment = require("../../models/SubscriptionPayment");
 
 // 📄 Get active plans
@@ -60,7 +60,7 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
         .json({ success: false, message: "Plan not found or inactive" });
     }
 
-    console.log("👉 Using Stripe price:", plan.stripePriceId); // debug
+    console.log("👉 Using Razorpay plan reference:", plan.stripePriceId); // debug
 
     // ✅ USE VENDOR URLs (not customer ones)
     const baseSuccess = process.env.VENDOR_SUCCESS_URL; // e.g. hirehandprovider://auth?result=success
@@ -70,28 +70,19 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
       throw new Error("VENDOR_SUCCESS_URL or VENDOR_CANCEL_URL is not set in .env");
     }
 
-    // 🔧 If baseSuccess already has ?, append with &, else use ?
-    const joinChar = baseSuccess.includes("?") ? "&" : "?";
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription", // ✅ MUST be subscription for recurring price
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: plan.stripePriceId, // must be price_... (recurring)
-          quantity: 1,
-        },
-      ],
-      metadata: {
+    const session = await createRazorpayCheckoutSession({
+      amount: plan.price,
+      orderId: plan._id,
+      userId: vendorId,
+      description: `Subscription: ${plan.name}`,
+      notes: {
         type: "vendor_subscription",
         vendorId: vendorId.toString(),
         planId: plan._id.toString(),
       },
-      success_url: `${baseSuccess}${joinChar}session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: baseCancel,
     });
 
-    res.json({ success: true, url: session.url });
+    res.json({ success: true, url: session.url, razorpayPaymentLinkId: session.id });
   } catch (err) {
     console.error("❌ VENDOR SUB CHECKOUT ERROR FULL:", err);
     res

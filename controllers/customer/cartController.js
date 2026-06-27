@@ -4,7 +4,7 @@ const Order = require("../../models/Order");
 const Booking = require("../../models/Booking");
 const Payment = require("../../models/Payment");
 const { calculateServicePrice } = require("../../utils/calculateServicePrice");
-const { createStripeCheckoutSession } = require("../../utils/stripe");
+const { createRazorpayCheckoutSession } = require("../../utils/razorpay");
 const Coupon = require("../../models/Coupon");
 const CouponUsage = require("../../models/CouponUsage");
 const {
@@ -208,7 +208,7 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    if (!["COD", "STRIPE"].includes(paymentMethod)) {
+    if (!["COD", "RAZORPAY"].includes(paymentMethod)) {
       return res.status(400).json({
         success: false,
         message: "Invalid payment method",
@@ -449,33 +449,39 @@ exports.checkOut = async (req, res) => {
       });
     }
 
-    // ================= STRIPE =================
-    if (paymentMethod === "STRIPE") {
+    // ================= RAZORPAY =================
+    if (paymentMethod === "RAZORPAY") {
       const payment = await Payment.create({
         order: order._id,
         customer: userId,
         vendor: vendorId,
         amount: grandTotal,
-        method: "STRIPE",
+        method: "RAZORPAY",
         status: "initiated",
-        gateway: "stripe",
+        gateway: "razorpay",
       });
 
-      const session = await createStripeCheckoutSession({
+      const session = await createRazorpayCheckoutSession({
         amount: grandTotal,
         orderId: order._id,
         userId,
+        description: "Home Service Booking",
+        notes: {
+          orderId: order._id.toString(),
+          paymentMethod: "RAZORPAY",
+        },
       });
 
-      payment.stripeSessionId = session.id;
+      payment.razorpayPaymentLinkId = session.id;
       await payment.save();
 
       await Cart.deleteMany({ user: userId });
 
       return res.json({
         success: true,
-        message: "Redirect to Stripe",
+        message: "Redirect to Razorpay",
         paymentUrl: session.url,
+        razorpayPaymentLinkId: session.id,
       });
     }
   } catch (err) {
