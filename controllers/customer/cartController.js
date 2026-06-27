@@ -546,7 +546,7 @@ exports.markOrderPaid = async (req, res) => {
       { session },
     );
 
-    // ================= REFERRAL LOGIC =================
+    // ================= REFERRAL LOGICS =================
     const customer = await User.findById(order.customer).session(session);
 
     if (customer && customer.referredBy && !customer.referralRewarded) {
