@@ -40,7 +40,7 @@ async function createRazorpayCheckoutSession({
     );
   }
 
-  const paymentLink = await razorpay.paymentLink.create({
+  const payload = {
     amount: Math.round(Number(amount) * 100),
     currency: "INR",
     description,
@@ -55,9 +55,16 @@ async function createRazorpayCheckoutSession({
       userId: userId.toString(),
       ...notes,
     },
-    callback_url: baseSuccessUrl,
-    callback_method: "get",
-  });
+  };
+
+  const isHttpUrl = (url) => /^https?:\/\//i.test(url);
+
+  if (isHttpUrl(baseSuccessUrl)) {
+    payload.callback_url = baseSuccessUrl;
+    payload.callback_method = "get";
+  }
+
+  const paymentLink = await razorpay.paymentLink.create(payload);
 
   return {
     id: paymentLink.id,
