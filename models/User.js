@@ -223,9 +223,9 @@ const userSchema = new mongoose.Schema(
 );
 
 // Sanitize invalid location data before saving
-userSchema.pre("validate", function (next) {
+userSchema.pre("validate", function () {
   if (!this.location) {
-    return next();
+    return;
   }
 
   const { type, coordinates } = this.location;
@@ -238,12 +238,11 @@ userSchema.pre("validate", function (next) {
     coordinates.some((value) => value === null || value === undefined || Number.isNaN(Number(value)))
   ) {
     this.location = undefined;
-    return next();
+    return;
   }
 
   this.location.type = "Point";
   this.location.coordinates = [Number(coordinates[0]), Number(coordinates[1])];
-  next();
 });
 
 // ================= GEO INDEX =================
