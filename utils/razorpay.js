@@ -44,7 +44,7 @@ async function createRazorpayCheckoutSession({
     amount: Math.round(Number(amount) * 100),
     currency: "INR",
     description,
-    receipt: `order_${orderId.toString()}`,
+    reference_id: orderId.toString(),
     notify: {
       sms: true,
       email: false,

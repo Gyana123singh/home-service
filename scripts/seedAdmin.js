@@ -13,16 +13,19 @@ async function seedAdmin() {
       process.exit(0);
     }
 
-    const passwordHash = await bcrypt.hash("Admin@123", 12);
+    const adminEmail = process.env.ADMIN_EMAIL || "adminhomeservice@gmail.com";
+    const adminPassword = process.env.ADMIN_PASSWORD || "Admin@123";
+
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
 
     await User.create({
-      email: "adminhomeservice@gmail.com",
+      email: adminEmail,
       password: passwordHash,
       role: "admin",
       isActive: true,
     });
 
-    console.log("✅ Admin created: adminhomeservice@gmail.com / Admin@123");
+    console.log(`✅ Admin created: ${adminEmail} / ${adminPassword}`);
     process.exit(0);
   } catch (err) {
     console.error("❌ Seed failed:", err);
