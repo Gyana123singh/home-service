@@ -12,11 +12,13 @@ const userSchema = new mongoose.Schema(
       type: {
         type: String,
         enum: ["Point"],
-        default: "Point",
       },
       coordinates: {
         type: [Number], // [longitude, latitude]
-        default: [],
+        validate: {
+          validator: (coords) => coords == null || coords.length === 2,
+          message: "Point must be an array of [longitude, latitude]",
+        },
       },
     },
 
@@ -219,6 +221,30 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+// Sanitize invalid location data before saving
+userSchema.pre("validate", function (next) {
+  if (!this.location) {
+    return next();
+  }
+
+  const { type, coordinates } = this.location;
+
+  if (
+    !type ||
+    type !== "Point" ||
+    !Array.isArray(coordinates) ||
+    coordinates.length !== 2 ||
+    coordinates.some((value) => value === null || value === undefined || Number.isNaN(Number(value)))
+  ) {
+    this.location = undefined;
+    return next();
+  }
+
+  this.location.type = "Point";
+  this.location.coordinates = [Number(coordinates[0]), Number(coordinates[1])];
+  next();
+});
 
 // ================= GEO INDEX =================
 userSchema.index({ location: "2dsphere" });
