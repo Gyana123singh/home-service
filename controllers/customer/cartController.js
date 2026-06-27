@@ -529,7 +529,7 @@ exports.markOrderPaid = async (req, res) => {
     order.status = "confirmed";
     await order.save({ session });
 
-    // 🔥 UPDATE PAYMENT STATUS (NEW FIX)
+    // 🔥 UPDATE PAYMENT STATUS 
     await Payment.findOneAndUpdate(
       { order: order._id },
       { status: "held" },
