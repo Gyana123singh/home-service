@@ -1,5 +1,6 @@
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
 const SubscriptionPayment = require("../../models/SubscriptionPayment");
+const User = require("../../models/User");
 
 // ➕ Create Plan
 exports.createPlan = async (req, res) => {

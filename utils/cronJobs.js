@@ -1,14 +1,16 @@
 const cron = require("node-cron");
 const { expireReferrals } = require("./referralExpiryJob");
+const { expireSubscriptions } = require("./subscriptionExpiryJob");
 
 cron.schedule(
   "0 0 * * *",
   async () => {
     try {
-      console.log("Running referral expiry job...");
+      console.log("Running daily background jobs...");
       await expireReferrals();
+      await expireSubscriptions();
     } catch (error) {
-      console.error("Referral expiry job failed:", error);
+      console.error("Background jobs failed:", error);
     }
   },
   {
@@ -16,4 +18,4 @@ cron.schedule(
   },
 );
 
-console.log("Referral cron initialized");
+console.log("Cron jobs initialized");

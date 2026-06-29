@@ -17,10 +17,13 @@ const {
   setOnlineStatus,
   getOnlineStatus,
   toggleServiceStatus,
+  getPayoutDetails,
+  updatePayoutDetails,
 } = require("../../controllers/vendor/vendorController");
 
 const { protect } = require("../../middleware/auth.middleware");
 const { isVendor } = require("../../middleware/role.middleware");
+const { checkVendorSubscription } = require("../../middleware/checkSubscription.middleware");
 
 // ✅ Dedicated multer for vendor onboarding uploads
 const vendorOnboardingMulter = require("../../middleware/providerMulter");
@@ -55,6 +58,8 @@ router.post(
 // PROFILE & SETTINGS
 // =========================
 router.get("/profile", protect, isVendor, getVendorProfile);
+router.get("/profile/payout-details", protect, isVendor, getPayoutDetails);
+router.put("/profile/payout-details", protect, isVendor, updatePayoutDetails);
 
 // Set vendor categories (from admin categories)
 router.post("/set-categories", protect, isVendor, setVendorCategories);
@@ -80,7 +85,7 @@ router.put(
   isVendor,
   updateVendorBasicProfile,
 );
-router.patch("/set-online-status", protect, isVendor, setOnlineStatus);
+router.patch("/set-online-status", protect, isVendor, checkVendorSubscription, setOnlineStatus);
 
 router.get("/get-online-status", protect, isVendor, getOnlineStatus);
 router.patch(

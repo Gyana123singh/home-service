@@ -14,6 +14,7 @@ exports.checkVendorSubscription = async (req, res, next) => {
       // ⛔ Auto-expire if date passed
       if (new Date(sub.endDate) < now) {
         sub.status = "expired";
+        user.isOnline = false;
         await user.save();
       }
     }

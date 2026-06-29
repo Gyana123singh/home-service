@@ -1,15 +1,24 @@
 const WithdrawRequest = require("../../models/WithdrawRequest");
 const Wallet = require("../../models/Wallet");
+const User = require("../../models/User");
 
 exports.requestWithdraw = async (req, res) => {
   try {
     const vendorId = req.user._id;
-    const { amount } = req.body;
+    const { amount, method } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
         success: false,
         message: "Invalid withdraw amount",
+      });
+    }
+
+    const withdrawMethod = method || "UPI";
+    if (!["UPI", "BANK"].includes(withdrawMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid withdrawal method. Choose UPI or BANK.",
       });
     }
 
@@ -29,13 +38,41 @@ exports.requestWithdraw = async (req, res) => {
       });
     }
 
-    // 🔹 Create withdraw request
-    const withdrawRequest = await WithdrawRequest.create({
+    const vendor = await User.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    const requestData = {
       vendor: vendorId,
       amount,
-      method: "UPI",
+      method: withdrawMethod,
       status: "pending",
-    });
+    };
+
+    if (withdrawMethod === "UPI") {
+      if (!vendor.upiId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please configure your UPI ID in profile before withdrawing.",
+        });
+      }
+      requestData.upiId = vendor.upiId;
+    } else {
+      if (!vendor.bankDetails || !vendor.bankDetails.accountNumber || !vendor.bankDetails.ifsc) {
+        return res.status(400).json({
+          success: false,
+          message: "Please configure your Bank Details in profile before withdrawing.",
+        });
+      }
+      requestData.bankDetails = vendor.bankDetails;
+    }
+
+    // 🔹 Create withdraw request
+    const withdrawRequest = await WithdrawRequest.create(requestData);
 
     // 🔹 Deduct wallet balance
     wallet.balance -= amount;
@@ -45,7 +82,7 @@ exports.requestWithdraw = async (req, res) => {
     wallet.transactions.push({
       type: "debit",
       amount,
-      description: "Withdrawal Request",
+      description: `Withdrawal Request (${withdrawMethod})`,
     });
 
     await wallet.save();

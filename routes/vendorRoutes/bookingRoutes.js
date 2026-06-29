@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { protect } = require("../../middleware/auth.middleware");
 const { isVendor } = require("../../middleware/role.middleware");
+const { checkVendorSubscription } = require("../../middleware/checkSubscription.middleware");
 
 const bookingController = require("../../controllers/vendor/bookingController");
 
@@ -23,6 +24,7 @@ router.post(
   "/bookings/:id/accept",
   protect,
   isVendor,
+  checkVendorSubscription,
   bookingController.acceptBooking,
 );
 

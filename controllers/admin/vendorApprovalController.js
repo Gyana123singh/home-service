@@ -1,4 +1,5 @@
 const User = require("../../models/User");
+const ProviderProfile = require("../../models/AdminProviderProfile");
 
 // =========================
 // GET ALL PENDING VENDORS
@@ -9,12 +10,23 @@ exports.getPendingVendors = async (req, res) => {
       role: "vendor",
       vendorStatus: "pending",
       vendorOnboardingStep: "completed",
-    }).select("-password +selfieImage"); // 👈 include image
+    })
+      .select("-password +selfieImage +documents.aadhaarImage +documents.panImage +documents.passportPhoto +documents.companyCertificate")
+      .lean();
+
+    const formattedVendors = [];
+    for (const vendor of vendors) {
+      const profile = await ProviderProfile.findOne({ vendor: vendor._id }).lean();
+      formattedVendors.push({
+        ...vendor,
+        profile: profile || null
+      });
+    }
 
     return res.json({
       success: true,
-      count: vendors.length,
-      data: vendors,
+      count: formattedVendors.length,
+      data: formattedVendors,
     });
   } catch (error) {
     console.error("GET PENDING VENDORS ERROR:", error);
@@ -100,12 +112,22 @@ exports.getAllVendors = async (req, res) => {
     }
 
     const vendors = await User.find(filter)
-      .select("-password +selfieImage"); // 👈 include image
+      .select("-password +selfieImage +documents.aadhaarImage +documents.panImage +documents.passportPhoto +documents.companyCertificate")
+      .lean();
+
+    const formattedVendors = [];
+    for (const vendor of vendors) {
+      const profile = await ProviderProfile.findOne({ vendor: vendor._id }).lean();
+      formattedVendors.push({
+        ...vendor,
+        profile: profile || null
+      });
+    }
 
     return res.json({
       success: true,
-      count: vendors.length,
-      data: vendors,
+      count: formattedVendors.length,
+      data: formattedVendors,
     });
   } catch (error) {
     console.error("GET ALL VENDORS ERROR:", error);

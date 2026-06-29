@@ -16,6 +16,6 @@ router.get("/", protect, isAdmin, getAllPlans);
 router.put("/:id", protect, isAdmin, updatePlan);
 router.delete("/:id", protect, isAdmin, deletePlan);
 // API to get “Cash Collections”
-router.get("/", protect, isAdmin, getAllSubscriptionPayments);
+router.get("/payments", protect, isAdmin, getAllSubscriptionPayments);
 
 module.exports = router;

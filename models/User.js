@@ -178,6 +178,13 @@ const userSchema = new mongoose.Schema(
       stripeSessionId: String,
       razorpayPaymentLinkId: String,
     },
+    bankDetails: {
+      accountNumber: String,
+      ifsc: String,
+      accountHolderName: String,
+      bankName: String,
+    },
+    upiId: String,
     referralCode: {
       type: String,
       unique: true,

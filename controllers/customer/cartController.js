@@ -440,6 +440,17 @@ exports.checkOut = async (req, res) => {
         message: "New booking received",
       });
 
+      // Create Payment log for COD to show in transactions
+      await Payment.create({
+        order: order._id,
+        customer: userId,
+        vendor: vendorId,
+        amount: grandTotal,
+        method: "COD",
+        status: "initiated",
+        gateway: "cod",
+      });
+
       await Cart.deleteMany({ user: userId });
 
       return res.json({

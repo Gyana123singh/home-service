@@ -13,6 +13,7 @@ router.post(
   providerController.createProvider,
 );
 router.get("/get-provider", protect, isAdmin, providerController.getProviders);
-// router.patch("/:vendorId/approve-reject", approveRejectVendor);
+router.put("/:vendorId", protect, isAdmin, providerController.updateProvider);
+router.delete("/:vendorId", protect, isAdmin, providerController.deleteProvider);
 
 module.exports = router;

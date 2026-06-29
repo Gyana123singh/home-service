@@ -723,3 +723,66 @@ exports.toggleServiceStatus = async (req, res) => {
     });
   }
 };
+
+// =========================
+// GET PAYOUT DETAILS
+// =========================
+exports.getPayoutDetails = async (req, res) => {
+  try {
+    const vendor = await User.findById(req.user._id).select("bankDetails upiId");
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
+    return res.json({
+      success: true,
+      bankDetails: vendor.bankDetails || {
+        accountNumber: "",
+        ifsc: "",
+        accountHolderName: "",
+        bankName: ""
+      },
+      upiId: vendor.upiId || ""
+    });
+  } catch (error) {
+    console.error("GET PAYOUT DETAILS ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =========================
+// UPDATE PAYOUT DETAILS
+// =========================
+exports.updatePayoutDetails = async (req, res) => {
+  try {
+    const { bankDetails, upiId } = req.body;
+    const vendor = await User.findById(req.user._id);
+
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: "Vendor not found" });
+    }
+
+    if (bankDetails !== undefined) {
+      vendor.bankDetails = {
+        accountNumber: bankDetails.accountNumber || "",
+        ifsc: bankDetails.ifsc || "",
+        accountHolderName: bankDetails.accountHolderName || "",
+        bankName: bankDetails.bankName || ""
+      };
+    }
+    if (upiId !== undefined) {
+      vendor.upiId = upiId || "";
+    }
+
+    await vendor.save();
+
+    return res.json({
+      success: true,
+      message: "Payout details updated successfully",
+      bankDetails: vendor.bankDetails,
+      upiId: vendor.upiId
+    });
+  } catch (error) {
+    console.error("UPDATE PAYOUT DETAILS ERROR:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};

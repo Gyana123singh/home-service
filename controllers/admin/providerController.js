@@ -324,3 +324,106 @@ exports.getProviders = async (req, res) => {
     });
   }
 };
+
+// =========================
+// UPDATE PROVIDER
+// =========================
+exports.updateProvider = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      companyName,
+      description,
+      visitingCharge,
+      advanceBookingDays,
+      totalMembers,
+      city,
+      address,
+      lat,
+      lng,
+      vendorStatus
+    } = req.body;
+
+    const vendor = await User.findById(vendorId);
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(404).json({ success: false, message: "Provider not found" });
+    }
+
+    // Update User details
+    if (firstName) vendor.firstName = firstName;
+    if (lastName) vendor.lastName = lastName;
+    if (email) vendor.email = email;
+    if (phone) vendor.phone = phone;
+    if (vendorStatus) vendor.vendorStatus = vendorStatus;
+
+    await vendor.save();
+
+    // Update or Create Provider Profile details
+    let profile = await ProviderProfile.findOne({ vendor: vendorId });
+    if (!profile) {
+      profile = new ProviderProfile({ vendor: vendorId });
+    }
+
+    if (companyName) profile.companyName = companyName;
+    if (description !== undefined) profile.description = description;
+    if (visitingCharge !== undefined) profile.visitingCharge = Number(visitingCharge);
+    if (advanceBookingDays !== undefined) profile.advanceBookingDays = Number(advanceBookingDays);
+    if (totalMembers !== undefined) profile.totalMembers = Number(totalMembers);
+
+    if (city || address || lat || lng) {
+      if (!profile.location) profile.location = {};
+      if (city) profile.location.city = city;
+      if (address) profile.location.address = address;
+      if (lat) profile.location.lat = Number(lat);
+      if (lng) profile.location.lng = Number(lng);
+    }
+
+    await profile.save();
+
+    res.json({
+      success: true,
+      message: "Provider details updated successfully",
+      vendor,
+      profile
+    });
+  } catch (error) {
+    console.error("UPDATE PROVIDER ERROR:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// =========================
+// DELETE PROVIDER
+// =========================
+exports.deleteProvider = async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+
+    const vendor = await User.findById(vendorId);
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(404).json({ success: false, message: "Provider not found" });
+    }
+
+    // Delete User
+    await User.findByIdAndDelete(vendorId);
+
+    // Delete Profile
+    await ProviderProfile.findOneAndDelete({ vendor: vendorId });
+
+    // Delete Wallet (if any)
+    const Wallet = require("../../models/Wallet");
+    await Wallet.findOneAndDelete({ user: vendorId });
+
+    res.json({
+      success: true,
+      message: "Provider and all associated profile/wallet data deleted successfully"
+    });
+  } catch (error) {
+    console.error("DELETE PROVIDER ERROR:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

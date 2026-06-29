@@ -220,6 +220,11 @@ exports.completeBooking = async (req, res) => {
     // ================= COD =================
     if (booking.paymentMethod === "COD") {
       await creditVendor(order.vendor, order.grandTotal, booking._id, io);
+      // Update the payment log to success
+      await Payment.findOneAndUpdate(
+        { order: order._id },
+        { status: "released", releasedAt: new Date() }
+      );
     }
 
     // 🔥 Mark as credited

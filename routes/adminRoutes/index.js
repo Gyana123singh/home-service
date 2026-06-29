@@ -12,6 +12,9 @@ const couponRoutes = require("./couponRoutes");
 const subscriptionRoutes = require("./subscriptionRoutes");
 const offerRoutes = require("./offerRoutes");
 const refferalRoutes = require("./referralRoutes");
+const transactionRoutes = require("./transactionRoutes");
+const settlementRoutes = require("./settlementRoutes");
+const adminBookingRoutes = require("./bookingRoutes");
 
 // Mount routes
 router.use("/", adminRoutes);
@@ -25,5 +28,8 @@ router.use("/coupons", couponRoutes);
 router.use("/subscription", subscriptionRoutes);
 router.use("/offers", offerRoutes);
 router.use("/referral", refferalRoutes);
+router.use("/transactions", transactionRoutes);
+router.use("/", settlementRoutes);
+router.use("/bookings", adminBookingRoutes);
 
 module.exports = router;
