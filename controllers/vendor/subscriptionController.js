@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
 const User = require("../../models/User");
 const { createRazorpayCheckoutSession } = require("../../utils/razorpay");
@@ -70,9 +71,11 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
       throw new Error("VENDOR_SUCCESS_URL or VENDOR_CANCEL_URL is not set in .env");
     }
 
+    const uniqueOrderId = new mongoose.Types.ObjectId();
+
     const session = await createRazorpayCheckoutSession({
       amount: plan.price,
-      orderId: plan._id,
+      orderId: uniqueOrderId,
       userId: vendorId,
       description: `Subscription: ${plan.name}`,
       notes: {
@@ -80,6 +83,7 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
         vendorId: vendorId.toString(),
         planId: plan._id.toString(),
       },
+      callbackUrl: baseSuccess,
     });
 
     res.json({ success: true, url: session.url, razorpayPaymentLinkId: session.id });

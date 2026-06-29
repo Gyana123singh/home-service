@@ -27,11 +27,12 @@ async function createRazorpayCheckoutSession({
   userId,
   description = "Home Service Booking",
   notes = {},
+  callbackUrl,
 }) {
   if (!razorpay) {
     throw new Error("Razorpay credentials are not configured");
   }
-  const baseSuccessUrl = process.env.FRONTEND_SUCCESS_URL;
+  const baseSuccessUrl = callbackUrl || process.env.FRONTEND_SUCCESS_URL;
   const cancelUrl = process.env.FRONTEND_CANCEL_URL;
 
   if (!baseSuccessUrl || !cancelUrl) {
