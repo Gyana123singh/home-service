@@ -63,13 +63,9 @@ exports.createVendorSubscriptionCheckout = async (req, res) => {
 
     console.log("👉 Using Razorpay plan reference:", plan.stripePriceId); // debug
 
-    // ✅ USE VENDOR URLs (not customer ones)
-    const baseSuccess = process.env.VENDOR_SUCCESS_URL; // e.g. hirehandprovider://auth?result=success
-    const baseCancel = process.env.VENDOR_CANCEL_URL;
-
-    if (!baseSuccess || !baseCancel) {
-      throw new Error("VENDOR_SUCCESS_URL or VENDOR_CANCEL_URL is not set in .env");
-    }
+    // ✅ USE VENDOR URLs (not customer ones) with defaults to prevent crashes
+    const baseSuccess = process.env.VENDOR_SUCCESS_URL || "hirehandprovider://auth?result=success";
+    const baseCancel = process.env.VENDOR_CANCEL_URL || "hirehandprovider://auth?result=cancel";
 
     const uniqueOrderId = new mongoose.Types.ObjectId();
 
