@@ -29,5 +29,9 @@ router.get(
 );
 
 router.patch("/:id/toggle", protect, isAdmin, serviceController.toggleOption);
+router.patch("/:id/status", protect, isAdmin, serviceController.toggleServiceStatus);
+router.get("/detail/:id", protect, isAdmin, serviceController.getServiceById);
+router.put("/:id", protect, isAdmin, serviceController.updateService);
+router.delete("/:id", protect, isAdmin, serviceController.deleteService);
 
 module.exports = router;

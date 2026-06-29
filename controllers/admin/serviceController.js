@@ -20,6 +20,19 @@ exports.createService = async (req, res) => {
       });
     }
 
+    // Check if the service already exists in the selected category (case-insensitive)
+    const existingService = await Service.findOne({
+      title: { $regex: new RegExp(`^${title.trim()}$`, "i") },
+      category: category.trim(),
+    });
+
+    if (existingService) {
+      return res.status(400).json({
+        success: false,
+        message: "A service with this title already exists in this category.",
+      });
+    }
+
     const service = await Service.create({
       title,
       category,
@@ -142,4 +155,116 @@ exports.toggleOption = async (req, res) => {
   await option.save();
 
   res.json({ success: true, option });
+};
+
+/**
+ * =========================
+ * TOGGLE SERVICE STATUS
+ * =========================
+ */
+exports.toggleServiceStatus = async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+    if (!service) {
+      return res.status(404).json({ success: false, message: "Service not found" });
+    }
+    service.status = service.status === "active" ? "inactive" : "active";
+    await service.save();
+    return res.json({
+      success: true,
+      message: `Service marked as ${service.status}`,
+      status: service.status,
+    });
+  } catch (error) {
+    console.error("TOGGLE SERVICE STATUS ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * =========================
+ * DELETE SERVICE
+ * =========================
+ */
+exports.deleteService = async (req, res) => {
+  try {
+    const service = await Service.findByIdAndDelete(req.params.id);
+    if (!service) {
+      return res.status(404).json({ success: false, message: "Service not found" });
+    }
+    return res.json({ success: true, message: "Service deleted successfully" });
+  } catch (error) {
+    console.error("DELETE SERVICE ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * =========================
+ * GET SERVICE BY ID
+ * =========================
+ */
+exports.getServiceById = async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+    if (!service) {
+      return res.status(404).json({ success: false, message: "Service not found" });
+    }
+    return res.json({ success: true, data: service });
+  } catch (error) {
+    console.error("GET SERVICE BY ID ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * =========================
+ * UPDATE SERVICE
+ * =========================
+ */
+exports.updateService = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, category, requirements } = req.body;
+
+    if (!title || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and category are required",
+      });
+    }
+
+    // Check duplicate check (excluding the current service)
+    const existingService = await Service.findOne({
+      title: { $regex: new RegExp(`^${title.trim()}$`, "i") },
+      category: category.trim(),
+      _id: { $ne: id },
+    });
+
+    if (existingService) {
+      return res.status(400).json({
+        success: false,
+        message: "A service with this title already exists in this category.",
+      });
+    }
+
+    const service = await Service.findByIdAndUpdate(
+      id,
+      { title, category, requirements },
+      { new: true }
+    );
+
+    if (!service) {
+      return res.status(404).json({ success: false, message: "Service not found" });
+    }
+
+    return res.json({
+      success: true,
+      message: "Service updated successfully",
+      data: service,
+    });
+  } catch (error) {
+    console.error("UPDATE SERVICE ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
 };
