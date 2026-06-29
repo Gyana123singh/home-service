@@ -6,6 +6,8 @@ const Booking = require("../../models/Booking");
 const Order = require("../../models/Order");
 const VendorService = require("../../models/VendorService");
 const SubscriptionPayment = require("../../models/SubscriptionPayment");
+const Payment = require("../../models/Payment");
+const WithdrawRequest = require("../../models/WithdrawRequest");
 exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -215,6 +217,62 @@ exports.getDashboardStats = async (req, res) => {
       }
     }
 
+    // 💸 Recent Transactions
+    const [payments, subPayments, withdraws] = await Promise.all([
+      Payment.find().populate("customer", "firstName lastName").sort({ createdAt: -1 }).limit(5),
+      SubscriptionPayment.find().populate("vendor", "firstName lastName").sort({ createdAt: -1 }).limit(5),
+      WithdrawRequest.find().populate("vendor", "firstName lastName").sort({ createdAt: -1 }).limit(5)
+    ]);
+
+    const recentTransactionsList = [];
+
+    payments.forEach(bp => {
+      const customerName = bp.customer ? `${bp.customer.firstName || ""} ${bp.customer.lastName || ""}`.trim() : "Unknown Customer";
+      const unifiedStatus = (bp.status === "released" || bp.status === "held") ? "Success" : bp.status === "failed" ? "Failed" : "Pending";
+      recentTransactionsList.push({
+        id: bp._id,
+        user: customerName,
+        transactionType: "booking",
+        amount: bp.amount || 0,
+        date: bp.createdAt,
+        status: unifiedStatus
+      });
+    });
+
+    subPayments.forEach(sp => {
+      const vendorName = sp.vendor ? `${sp.vendor.firstName || ""} ${sp.vendor.lastName || ""}`.trim() : "Unknown Vendor";
+      const unifiedStatus = sp.status === "paid" ? "Success" : "Failed";
+      recentTransactionsList.push({
+        id: sp._id,
+        user: vendorName,
+        transactionType: "subscription",
+        amount: sp.amount || 0,
+        date: sp.createdAt,
+        status: unifiedStatus
+      });
+    });
+
+    withdraws.forEach(wr => {
+      const vendorName = wr.vendor ? `${wr.vendor.firstName || ""} ${wr.vendor.lastName || ""}`.trim() : "Unknown Vendor";
+      let unifiedStatus = "Pending";
+      if (wr.status === "paid" || wr.status === "approved") {
+        unifiedStatus = "Success";
+      } else if (wr.status === "rejected") {
+        unifiedStatus = "Failed";
+      }
+      recentTransactionsList.push({
+        id: wr._id,
+        user: vendorName,
+        transactionType: "withdrawal",
+        amount: wr.amount || 0,
+        date: wr.createdAt,
+        status: unifiedStatus
+      });
+    });
+
+    recentTransactionsList.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const recentTransactions = recentTransactionsList.slice(0, 10);
+
     return res.json({
       success: true,
       stats: {
@@ -227,6 +285,7 @@ exports.getDashboardStats = async (req, res) => {
         totalRevenue
       },
       recentBookings: mappedBookings,
+      recentTransactions,
       topProviders,
       trendingServices
     });
