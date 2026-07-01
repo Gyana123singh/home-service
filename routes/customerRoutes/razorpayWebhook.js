@@ -11,6 +11,7 @@ const Booking = require("../../models/Booking");
 const User = require("../../models/User");
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
 const SubscriptionPayment = require("../../models/SubscriptionPayment");
+const { sendNotification } = require("../../utils/notification");
 
 const { getIO } = require("../../sockets/socket");
 
@@ -197,6 +198,15 @@ router.post(
             io.to(`vendor:${payment.vendor}`).emit("order:update", order);
             io.to(`user:${payment.customer}`).emit("order:update", order);
             io.to("admin").emit("order:update", order);
+
+            // Send persistent notification to vendor
+            await sendNotification(
+              payment.vendor,
+              "New Paid Booking Request",
+              `You have a new paid booking request for ₹${order.totalPrice || payment.amount}.`,
+              "booking",
+              { orderId: order._id.toString() }
+            );
           } catch (e) {
             console.warn("Socket emit error:", e.message);
           }

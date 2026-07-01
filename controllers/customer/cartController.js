@@ -3,6 +3,7 @@ const Service = require("../../models/VendorService");
 const Order = require("../../models/Order");
 const Booking = require("../../models/Booking");
 const Payment = require("../../models/Payment");
+const { sendNotification } = require("../../utils/notification");
 const { calculateServicePrice } = require("../../utils/calculateServicePrice");
 const { createRazorpayCheckoutSession } = require("../../utils/razorpay");
 const Coupon = require("../../models/Coupon");
@@ -439,6 +440,15 @@ exports.checkOut = async (req, res) => {
         orderId: order._id,
         message: "New booking received",
       });
+
+      // Create persistent notification and send via socket
+      await sendNotification(
+        vendorId,
+        "New Booking Request",
+        `You have received a new booking request for a total of ₹${grandTotal}.`,
+        "booking",
+        { orderId: order._id.toString() }
+      );
 
       // Create Payment log for COD to show in transactions
       await Payment.create({

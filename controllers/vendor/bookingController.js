@@ -5,6 +5,7 @@ const Order = require("../../models/Order");
 const Payment = require("../../models/Payment");
 const Wallet = require("../../models/Wallet");
 const { razorpay } = require("../../utils/razorpay");
+const { sendNotification } = require("../../utils/notification");
 
 // =========================
 // GET VENDOR BOOKINGS
@@ -48,6 +49,15 @@ exports.acceptBooking = async (req, res) => {
     booking.status = "confirmed";
     await booking.save();
 
+    // Notify customer
+    await sendNotification(
+      booking.customer,
+      "Booking Confirmed",
+      `Your booking request for a service has been confirmed by the provider.`,
+      "booking",
+      { bookingId: booking._id.toString() }
+    );
+
     // Emit socket updates (optional safety checks)
     if (io) {
       io.to(`vendor:${booking.vendor}`).emit("booking:update", booking);
@@ -87,6 +97,15 @@ exports.declineBooking = async (req, res) => {
 
     booking.status = "cancelled";
     await booking.save();
+
+    // Notify customer
+    await sendNotification(
+      booking.customer,
+      "Booking Declined",
+      `Your booking request was declined. A refund has been processed if applicable.`,
+      "booking",
+      { bookingId: booking._id.toString() }
+    );
 
     // ================= REFUND =================
 
@@ -195,6 +214,15 @@ exports.completeBooking = async (req, res) => {
     booking.paymentStatus = "paid";
 
     await booking.save();
+
+    // Notify customer
+    await sendNotification(
+      booking.customer,
+      "Booking Completed",
+      `Your service booking has been marked as completed. Thank you!`,
+      "booking",
+      { bookingId: booking._id.toString() }
+    );
 
     const order = await Order.findById(booking.order);
     if (!order) {
