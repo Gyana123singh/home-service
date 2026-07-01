@@ -8,6 +8,7 @@ const serviceRoutes = require("./serviceRoutes");
 const couponRoutes = require("./couponRoutes");
 const bookingRoutes = require("./bookingRoutes");
 const reviewRoutes = require("./reviewRoutes");
+const notificationRoutes = require("./notificationRoutes");
 
 // Mount review routes
 router.use("/reviews", reviewRoutes);
@@ -25,5 +26,7 @@ router.use("/coupons", couponRoutes);
 // Mount booking routes
 router.use("/bookings", bookingRoutes);
 router.use("/reviews", reviewRoutes);
+// Mount notification routes
+router.use("/notifications", notificationRoutes);
 
 module.exports = router;
