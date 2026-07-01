@@ -7,6 +7,7 @@ const { verifyRazorpaySignature } = require("../../utils/razorpay");
 const Payment = require("../../models/Payment");
 const Order = require("../../models/Order");
 const Booking = require("../../models/Booking");
+const Service = require("../../models/VendorService");
 
 const User = require("../../models/User");
 const SubscriptionPlan = require("../../models/SubscriptionPlan");
@@ -48,10 +49,11 @@ router.post(
       const eventType = event?.event;
 
       if (eventType === "payment.captured" || eventType === "payment.authorized") {
-        const payment = await Payment.findOne({
+        let payment = await Payment.findOne({
           $or: [
             { razorpayPaymentId: paymentEntity.id },
             { razorpayPaymentLinkId: paymentEntity.id },
+            { razorpayPaymentLinkId: paymentEntity.payment_link_id },
           ],
         });
 
@@ -161,6 +163,16 @@ router.post(
 
           await order.save();
 
+          const serviceIds = order.items.map((i) => i.service);
+          const services = await Service.find({
+            _id: { $in: serviceIds },
+          });
+
+          const serviceMap = {};
+          services.forEach((s) => {
+            serviceMap[s._id.toString()] = s;
+          });
+
           for (const item of order.items) {
             const existingBooking = await Booking.findOne({
               order: order._id,
@@ -168,11 +180,12 @@ router.post(
             });
 
             if (!existingBooking) {
+              const serviceDoc = serviceMap[item.service.toString()];
               await Booking.create({
                 order: order._id,
                 customer: order.customer,
                 vendor: order.vendor,
-                category: "Service",
+                category: serviceDoc?.category || "Service",
                 service: item.service,
                 selections: item.selections,
                 date: item.date,
