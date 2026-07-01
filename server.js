@@ -11,6 +11,7 @@ const adminRouter = require("./routes/adminRoutes/index");
 const vendorRouter = require("./routes/vendorRoutes/index");
 const customerRouter = require("./routes/customerRoutes/index");
 const googleAuthRoutes = require("./routes/googleAuth.routes/googleAuth.routes");
+const geocodeRouter = require("./routes/geocodeRouter");
 const otpRoutes = require("./routes/otpAuth.routes/otpAuthRoutes");
 const razorpayWebhookRoutes = require("./routes/customerRoutes/razorpayWebhook"); // 👈 Razorpay webhook
 const contactRoute = require("./routes/websiteRoutes/contactRoute"); // 👈 Contact form route
@@ -52,6 +53,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/vendor", vendorRouter);
 app.use("/api/customer", customerRouter);
 app.use("/api/googleAuth", googleAuthRoutes);
+app.use("/api/geocode", geocodeRouter);
 app.use("/api/otp/auth", otpRoutes);
 app.use("/api/contact", contactRoute);
 app.use("/api/register", registerRoute);
