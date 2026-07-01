@@ -11,8 +11,8 @@ exports.checkVendorSubscription = async (req, res, next) => {
       return next();
     }
 
-    // 🔓 Allow bypassing subscription verification in development/testing
-    if (process.env.BYPASS_SUBSCRIPTION === "true") {
+    // 🔓 By default, bypass subscription checks unless ENABLE_SUBSCRIPTION_CHECK=true is set
+    if (process.env.ENABLE_SUBSCRIPTION_CHECK !== "true") {
       return next();
     }
 
