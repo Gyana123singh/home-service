@@ -6,6 +6,7 @@ const Booking = require("../../models/Booking");
 const ServiceCategory = require("../../models/ServiceCategory");
 const Wallet = require("../../models/Wallet");
 const VendorService = require("../../models/VendorService");
+const Notification = require("../../models/Notification");
 
 /**
  * =========================
@@ -784,5 +785,41 @@ exports.updatePayoutDetails = async (req, res) => {
   } catch (error) {
     console.error("UPDATE PAYOUT DETAILS ERROR:", error);
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// =========================
+// DELETE VENDOR ACCOUNT
+// =========================
+exports.deleteVendorAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Delete associated services
+    await VendorService.deleteMany({ vendor: userId });
+
+    // 2. Delete notifications
+    await Notification.deleteMany({ recipient: userId });
+
+    // 3. Delete the user
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error) {
+    console.error("DELETE ACCOUNT ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };

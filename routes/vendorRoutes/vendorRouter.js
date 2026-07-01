@@ -19,6 +19,7 @@ const {
   toggleServiceStatus,
   getPayoutDetails,
   updatePayoutDetails,
+  deleteVendorAccount,
 } = require("../../controllers/vendor/vendorController");
 
 const { protect } = require("../../middleware/auth.middleware");
@@ -94,5 +95,7 @@ router.patch(
   isVendor,
   toggleServiceStatus,
 );
+
+router.delete("/profile", protect, isVendor, deleteVendorAccount);
 
 module.exports = router;
