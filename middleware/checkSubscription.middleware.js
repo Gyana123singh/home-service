@@ -6,6 +6,16 @@ exports.checkVendorSubscription = async (req, res, next) => {
 
     if (!user || user.role !== "vendor") return next();
 
+    // 🔓 Allow going offline without checking subscription status
+    if (req.originalUrl && req.originalUrl.includes("/set-online-status") && req.body && req.body.isOnline === false) {
+      return next();
+    }
+
+    // 🔓 Allow bypassing subscription verification in development/testing
+    if (process.env.BYPASS_SUBSCRIPTION === "true") {
+      return next();
+    }
+
     const sub = user.subscription;
 
     if (sub && sub.status === "active" && sub.endDate) {
