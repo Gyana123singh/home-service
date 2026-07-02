@@ -220,7 +220,7 @@ const userSchema = new mongoose.Schema(
         pincode: String,
         isDefault: { type: Boolean, default: false },
         name: String,
-        type: String,
+        type: { type: String },
         building: String,
         street: String,
         locality: String,
