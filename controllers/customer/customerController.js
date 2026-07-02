@@ -571,6 +571,10 @@ exports.addAddress = async (req, res) => {
     if (newAddress.administrativeArea && !newAddress.state) newAddress.state = newAddress.administrativeArea;
     if (newAddress.postalCode && !newAddress.pincode) newAddress.pincode = newAddress.postalCode;
 
+    if (!user.savedAddresses || !Array.isArray(user.savedAddresses)) {
+      user.savedAddresses = [];
+    }
+
     // If first address, make it default
     if (user.savedAddresses.length === 0) {
       newAddress.isDefault = true;
@@ -603,6 +607,10 @@ exports.updateAddress = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+    }
+
+    if (!user.savedAddresses || !Array.isArray(user.savedAddresses)) {
+      user.savedAddresses = [];
     }
 
     const address = user.savedAddresses.id(addressId);
@@ -645,6 +653,10 @@ exports.deleteAddress = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
+    if (!user.savedAddresses || !Array.isArray(user.savedAddresses)) {
+      user.savedAddresses = [];
+    }
+
     user.savedAddresses = user.savedAddresses.filter(
       (a) => a._id.toString() !== addressId,
     );
@@ -671,6 +683,10 @@ exports.setDefaultAddress = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
+    }
+
+    if (!user.savedAddresses || !Array.isArray(user.savedAddresses)) {
+      user.savedAddresses = [];
     }
 
     user.savedAddresses.forEach((addr) => {
