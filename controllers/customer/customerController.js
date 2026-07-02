@@ -702,3 +702,35 @@ exports.getMyReferralStats = async (req, res) => {
     });
   }
 };
+
+// ================= DELETE ACCOUNT =================
+exports.deleteCustomerAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Delete notifications
+    const Notification = require("../../models/Notification");
+    await Notification.deleteMany({ recipient: userId });
+
+    // 2. Delete the user
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error) {
+    console.error("DELETE ACCOUNT ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

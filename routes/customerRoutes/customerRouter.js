@@ -19,6 +19,7 @@ const {
   deleteAddress,
   setDefaultAddress,
   getMyReferralStats,
+  deleteCustomerAccount,
 } = require("../../controllers/customer/customerController");
 const { protect } = require("../../middleware/auth.middleware");
 
@@ -54,5 +55,6 @@ router.put("/update-address/:addressId", protect, updateAddress);
 router.delete("/delete-address/:addressId", protect, deleteAddress);
 router.put("/set-default/:addressId", protect, setDefaultAddress);
 router.get("/get-my-referral-stats", protect, getMyReferralStats);
+router.delete("/delete-profile", protect, deleteCustomerAccount);
 
 module.exports = router;
