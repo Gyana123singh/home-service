@@ -16,4 +16,21 @@ router.post(
 // Get Category List
 router.get("/get-category", protect, isAdmin, categoryController.getCategories);
 
+// Edit Category
+router.put(
+  "/edit-category/:id",
+  protect,
+  isAdmin,
+  categoryUpload,
+  categoryController.editCategory,
+);
+
+// Delete Category
+router.delete(
+  "/delete-category/:id",
+  protect,
+  isAdmin,
+  categoryController.deleteCategory,
+);
+
 module.exports = router;
