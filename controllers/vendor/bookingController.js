@@ -15,7 +15,7 @@ exports.getVendorBookings = async (req, res) => {
     const vendorId = req.user._id;
 
     const bookings = await Booking.find({ vendor: vendorId })
-      .populate("customer", "firstName lastName phone")
+      .populate("customer", "firstName lastName phone location")
       .populate("service", "title")
       .populate("order") // important for address
       .sort({ createdAt: -1 });
