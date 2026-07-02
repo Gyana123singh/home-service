@@ -182,7 +182,7 @@ exports.updateService = async (req, res) => {
 
     const service = await VendorService.findOne({
       _id: id,
-      provider: vendorId, // 🔐 ensures only own service
+      vendor: vendorId, // 🔐 ensures only own service
     });
 
     if (!service) {
