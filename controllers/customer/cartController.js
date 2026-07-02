@@ -109,7 +109,7 @@ exports.getMyCart = async (req, res) => {
       path: "service",
       populate: {
         path: "vendor",
-        select: "firstName lastName isOnline role",
+        select: "firstName lastName isOnline role selfieImage avatar",
       },
     });
 

@@ -19,7 +19,7 @@ exports.getMyBookings = async (req, res) => {
 
     const bookings = await Booking.find(filter)
       .populate("service", "title")
-      .populate("vendor", "firstName lastName")
+      .populate("vendor", "firstName lastName selfieImage avatar")
       .sort({ date: 1 });
 
     res.json({ success: true, data: bookings });

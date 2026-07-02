@@ -55,6 +55,9 @@ exports.getServicesByCategory = async (req, res) => {
     const services = await VendorService.find({
       isActive: true,
       category: category, // ✅ STRICT MATCH (BEST)
+    }).populate({
+      path: "vendor",
+      select: "firstName lastName email phone selfieImage avatar",
     });
 
     console.log("✅ Services found:", services.length);
@@ -86,7 +89,12 @@ exports.getSpecialOfferServices = async (req, res) => {
 
     const services = await VendorService.find({
       isActive: true,
-    }).limit(20);
+    })
+      .populate({
+        path: "vendor",
+        select: "firstName lastName email phone selfieImage avatar",
+      })
+      .limit(20);
 
     const updated = services
       .map((service) => {
@@ -123,7 +131,10 @@ exports.getSpecialOfferServices = async (req, res) => {
 };
 exports.getServiceDetails = async (req, res) => {
   try {
-    const service = await VendorService.findById(req.params.id);
+    const service = await VendorService.findById(req.params.id).populate({
+      path: "vendor",
+      select: "firstName lastName email phone selfieImage avatar",
+    });
 
     if (!service || !service.isActive) {
       return res.status(404).json({
