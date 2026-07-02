@@ -563,6 +563,13 @@ exports.addAddress = async (req, res) => {
     }
 
     const newAddress = req.body;
+    
+    // Normalize location structure fields
+    if (newAddress.type && !newAddress.label) newAddress.label = newAddress.type;
+    if (newAddress.label && !newAddress.type) newAddress.type = newAddress.label;
+    if (newAddress.locality && !newAddress.city) newAddress.city = newAddress.locality;
+    if (newAddress.administrativeArea && !newAddress.state) newAddress.state = newAddress.administrativeArea;
+    if (newAddress.postalCode && !newAddress.pincode) newAddress.pincode = newAddress.postalCode;
 
     // If first address, make it default
     if (user.savedAddresses.length === 0) {
@@ -606,7 +613,14 @@ exports.updateAddress = async (req, res) => {
         .json({ success: false, message: "Address not found" });
     }
 
-    Object.assign(address, req.body);
+    const updateData = req.body;
+    if (updateData.type && !updateData.label) updateData.label = updateData.type;
+    if (updateData.label && !updateData.type) updateData.type = updateData.label;
+    if (updateData.locality && !updateData.city) updateData.city = updateData.locality;
+    if (updateData.administrativeArea && !updateData.state) updateData.state = updateData.administrativeArea;
+    if (updateData.postalCode && !updateData.pincode) updateData.pincode = updateData.postalCode;
+
+    Object.assign(address, updateData);
     await user.save();
 
     return res.json({ success: true, message: "Address updated" });
