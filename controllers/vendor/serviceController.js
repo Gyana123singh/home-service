@@ -110,7 +110,7 @@ exports.createVendorService = async (req, res) => {
     // ✅ CREATE OBJECT
     const newServiceData = {
       name: name || title,
-      description,
+      description: description || name || title || "",
 
       category: cleanCategory, // 🔥 SAVED HERE
       section: category,       // 🔥 original value
