@@ -41,6 +41,11 @@ passport.use(
             }
           }
 
+          const avatarUrl =
+            profile.photos && profile.photos.length > 0
+              ? profile.photos[0].value
+              : null;
+
           user = await User.create({
             firstName: profile.name?.givenName || "",
             lastName: profile.name?.familyName || "",
@@ -48,11 +53,27 @@ passport.use(
             googleId: profile.id,
             authProvider: "google",
             role: "customer",
+            avatar: avatarUrl || undefined,
             referralCode: await generateReferralCode(
               profile.name?.givenName || "USR",
             ),
             referredBy: referredByUser ? referredByUser._id : null,
           });
+        } else {
+          // Update avatar from Google profile on every login
+          const avatarUrl =
+            profile.photos && profile.photos.length > 0
+              ? profile.photos[0].value
+              : null;
+          console.log("Google OAuth - Existing user login:");
+          console.log("  profile.photos:", JSON.stringify(profile.photos));
+          console.log("  avatarUrl:", avatarUrl);
+          console.log("  user.avatar (before):", user.avatar);
+          if (avatarUrl) {
+            user.avatar = avatarUrl;
+            await user.save();
+            console.log("  user.avatar (after):", user.avatar);
+          }
         }
 
         return done(null, user);
